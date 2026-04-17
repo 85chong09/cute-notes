@@ -398,6 +398,8 @@ class MainWindow(QWidget):
             }
         ''')
         self.smiley_label.mousePressEvent = self.collapsed_clicked
+        self.smiley_label.mouseMoveEvent = self.collapsed_moved
+        self.smiley_label.mouseReleaseEvent = self.collapsed_released
         
         collapsed_layout.addWidget(self.smiley_label)
         self.main_layout.addWidget(self.collapsed_widget)
@@ -418,6 +420,19 @@ class MainWindow(QWidget):
         else:
             bg_color = 'rgba(45, 45, 60, 0.95)' if not is_transparent else 'rgba(45, 45, 60, 0.7)'
             text_color = '#e0e0e0'
+        
+        self.current_bg_color = bg_color
+        self.current_text_color = text_color
+        
+        self._update_window_style()
+    
+    def _update_window_style(self):
+        if hasattr(self, 'is_expanded') and not self.is_expanded:
+            bg_color = 'transparent'
+        else:
+            bg_color = getattr(self, 'current_bg_color', 'rgba(255, 248, 240, 0.95)')
+        
+        text_color = getattr(self, 'current_text_color', '#5a4a3a')
         
         self.setStyleSheet(f'''
             MainWindow {{
@@ -479,15 +494,7 @@ class MainWindow(QWidget):
                 for i in range(50, self.height(), 25):
                     painter.drawLine(20, i, self.width() - 20, i)
         else:
-            if theme == 'light':
-                color = QColor(255, 200, 150)
-            else:
-                color = QColor(80, 80, 100)
-            
-            color.setAlpha(240)
-            painter.setBrush(QBrush(color))
-            painter.setPen(Qt.NoPen)
-            painter.drawEllipse(10, 10, 80, 80)
+            pass
     
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -526,43 +533,32 @@ class MainWindow(QWidget):
                 geometry.get('width', 400),
                 geometry.get('height', 500)
             )
+        self._update_window_style()
         self.update()
     
     def collapsed_clicked(self, event):
         if event.button() == Qt.LeftButton:
-            self.toggle_expand()
+            self._click_start_pos = event.globalPos()
+            self.drag_position = event.globalPos() - self.frameGeometry().topLeft()
+            event.accept()
+    
+    def collapsed_moved(self, event):
+        if event.buttons() == Qt.LeftButton and self.drag_position:
+            self.move(event.globalPos() - self.drag_position)
+            event.accept()
+    
+    def collapsed_released(self, event):
+        if event.button() == Qt.LeftButton:
+            if hasattr(self, '_click_start_pos'):
+                delta = event.globalPos() - self._click_start_pos
+                if abs(delta.x()) < 5 and abs(delta.y()) < 5:
+                    self.toggle_expand()
+            self.drag_position = None
+            event.accept()
     
     def show_today(self):
         self.current_date = datetime.now().strftime('%Y-%m-%d')
-        self.date_label.setText(self.get_date_display())
-        self.todo_list_widget.show()
-        self.calendar_widget.hide()
-        self.refresh_todos()
-        
-        self.today_btn.setStyleSheet('''
-            QPushButton {
-                padding: 8px 15px;
-                border-radius: 15px;
-                background-color: rgba(255, 200, 150, 0.8);
-                border: none;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background-color: rgba(255, 180, 130, 0.9);
-            }
-        ''')
-        self.calendar_btn.setStyleSheet('''
-            QPushButton {
-                padding: 8px 15px;
-                border-radius: 15px;
-                background-color: rgba(200, 200, 255, 0.6);
-                border: none;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background-color: rgba(180, 180, 255, 0.8);
-            }
-        ''')
+        self.show_todo_list()
     
     def show_calendar(self):
         self.todo_list_widget.hide()
@@ -593,10 +589,40 @@ class MainWindow(QWidget):
             }
         ''')
     
+    def show_todo_list(self):
+        self.date_label.setText(self.get_date_display())
+        self.todo_list_widget.show()
+        self.calendar_widget.hide()
+        self.refresh_todos()
+        
+        self.today_btn.setStyleSheet('''
+            QPushButton {
+                padding: 8px 15px;
+                border-radius: 15px;
+                background-color: rgba(255, 200, 150, 0.8);
+                border: none;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 180, 130, 0.9);
+            }
+        ''')
+        self.calendar_btn.setStyleSheet('''
+            QPushButton {
+                padding: 8px 15px;
+                border-radius: 15px;
+                background-color: rgba(200, 200, 255, 0.6);
+                border: none;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: rgba(180, 180, 255, 0.8);
+            }
+        ''')
+    
     def on_calendar_clicked(self, qdate):
         self.current_date = qdate.toString('yyyy-MM-dd')
-        self.date_label.setText(self.get_date_display())
-        self.show_today()
+        self.show_todo_list()
     
     def refresh_todos(self):
         self.todo_list.clear()
