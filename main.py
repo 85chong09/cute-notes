@@ -1,0 +1,1051 @@
+import sys
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, 
+    QLabel, QPushButton, QLineEdit, QListWidget, 
+    QListWidgetItem, QCalendarWidget, QDialog, 
+    QMessageBox, QScrollArea, QFrame, QSplitter
+)
+from PyQt5.QtCore import Qt, QPoint, QDate, QPropertyAnimation, QRect, QSize, pyqtProperty
+from PyQt5.QtGui import (
+    QPainter, QColor, QPen, QBrush, QFont, 
+    QLinearGradient, QRadialGradient, QPainterPath,
+    QMouseEvent, QPaintEvent
+)
+from datetime import datetime
+from config import ConfigManager
+
+class TodoItem(QWidget):
+    def __init__(self, todo_item, date_str, config, parent=None):
+        super().__init__(parent)
+        self.todo = todo_item
+        self.date_str = date_str
+        self.config = config
+        self.is_expanded = True
+        self.setMinimumHeight(50)
+        self.setMaximumHeight(100)
+        self.setStyleSheet(self.get_style())
+    
+    def get_style(self):
+        theme = self.config.config.get('theme', 'light')
+        if theme == 'light':
+            bg_color = '#fff8f0'
+            text_color = '#5a4a3a'
+            completed_color = '#9e9e9e'
+        else:
+            bg_color = '#3a3a4a'
+            text_color = '#e0e0e0'
+            completed_color = '#707070'
+        
+        text_color = completed_color if self.todo.get('completed', False) else text_color
+        return f'''
+            TodoItem {{
+                background-color: {bg_color};
+                border-radius: 12px;
+                border: 1px solid rgba(200, 180, 160, 0.3);
+                padding: 8px;
+                margin: 4px;
+            }}
+            TodoItem:hover {{
+                background-color: {'#fff5e6' if theme == 'light' else '#454555'};
+            }}
+        '''
+    
+    def toggle_completed(self):
+        self.todo['completed'] = not self.todo.get('completed', False)
+        self.config.update_todo(self.date_str, self.todo['id'], completed=self.todo['completed'])
+        self.setStyleSheet(self.get_style())
+        self.update()
+    
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        theme = self.config.config.get('theme', 'light')
+        if theme == 'light':
+            text_color = QColor(90, 74, 58)
+            completed_color = QColor(158, 158, 158)
+        else:
+            text_color = QColor(224, 224, 224)
+            completed_color = QColor(112, 112, 112)
+        
+        is_completed = self.todo.get('completed', False)
+        current_color = completed_color if is_completed else text_color
+        
+        painter.setPen(QPen(current_color, 2))
+        brush = QBrush(QColor(255, 200, 150)) if is_completed else QBrush(Qt.NoBrush)
+        painter.setBrush(brush)
+        
+        circle_rect = QRect(8, (self.height() - 20) // 2, 20, 20)
+        painter.drawEllipse(circle_rect)
+        
+        if is_completed:
+            painter.setPen(QPen(QColor(90, 74, 58), 2))
+            painter.drawLine(12, self.height() // 2, 18, self.height() // 2 + 5)
+            painter.drawLine(18, self.height() // 2 + 5, 28, self.height() // 2 - 5)
+        
+        font = QFont('Microsoft YaHei', 10)
+        if is_completed:
+            font.setStrikeOut(True)
+        painter.setFont(font)
+        painter.setPen(QPen(current_color))
+        
+        text_rect = QRect(38, 5, self.width() - 100, self.height() - 10)
+        painter.drawText(text_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.todo['text'])
+        
+        delete_btn_rect = QRect(self.width() - 55, (self.height() - 25) // 2, 25, 25)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(QColor(255, 100, 100)))
+        painter.drawEllipse(delete_btn_rect)
+        painter.setPen(QPen(QColor(255, 255, 255), 2))
+        painter.drawText(delete_btn_rect, Qt.AlignCenter, '×')
+    
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            circle_rect = QRect(8, (self.height() - 20) // 2, 20, 20)
+            if circle_rect.contains(event.pos()):
+                self.toggle_completed()
+            else:
+                delete_btn_rect = QRect(self.width() - 55, (self.height() - 25) // 2, 25, 25)
+                if delete_btn_rect.contains(event.pos()):
+                    self.parent().delete_todo(self.todo['id'])
+
+class MainWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.config = ConfigManager()
+        self.is_expanded = True
+        self.current_date = datetime.now().strftime('%Y-%m-%d')
+        self.drag_position = None
+        self.init_ui()
+    
+    def init_ui(self):
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        
+        self.update_geometry()
+        self.apply_theme()
+        
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(10, 10, 10, 10)
+        
+        self.create_expanded_ui()
+        self.create_collapsed_ui()
+        
+        self.collapsed_widget.hide()
+    
+    def create_expanded_ui(self):
+        self.expanded_widget = QWidget(self)
+        self.expanded_widget.setMinimumSize(380, 480)
+        self.expanded_layout = QVBoxLayout(self.expanded_widget)
+        self.expanded_layout.setContentsMargins(15, 15, 15, 15)
+        self.expanded_layout.setSpacing(10)
+        
+        header_frame = QFrame()
+        header_frame.setStyleSheet('background: transparent;')
+        header_layout = QHBoxLayout(header_frame)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.title_label = QLabel('📒 可爱便签')
+        self.title_label.setFont(QFont('Microsoft YaHei', 14, QFont.Bold))
+        header_layout.addWidget(self.title_label)
+        
+        header_layout.addStretch()
+        
+        self.lock_btn = QPushButton('🔒' if self.config.config.get('is_locked') else '🔓')
+        self.lock_btn.setFixedSize(30, 30)
+        self.lock_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(255, 200, 150, 0.8);
+                border-radius: 15px;
+                font-size: 16px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 180, 130, 0.9);
+            }
+        ''')
+        self.lock_btn.clicked.connect(self.toggle_lock)
+        header_layout.addWidget(self.lock_btn)
+        
+        self.settings_btn = QPushButton('⚙️')
+        self.settings_btn.setFixedSize(30, 30)
+        self.settings_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(200, 200, 255, 0.8);
+                border-radius: 15px;
+                font-size: 16px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: rgba(180, 180, 255, 0.9);
+            }
+        ''')
+        self.settings_btn.clicked.connect(self.show_settings)
+        header_layout.addWidget(self.settings_btn)
+        
+        self.minimize_btn = QPushButton('−')
+        self.minimize_btn.setFixedSize(30, 30)
+        self.minimize_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(255, 200, 200, 0.8);
+                border-radius: 15px;
+                font-size: 20px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 180, 180, 0.9);
+            }
+        ''')
+        self.minimize_btn.clicked.connect(self.toggle_expand)
+        header_layout.addWidget(self.minimize_btn)
+        
+        self.expanded_layout.addWidget(header_frame)
+        
+        search_frame = QFrame()
+        search_frame.setStyleSheet('background: transparent;')
+        search_layout = QHBoxLayout(search_frame)
+        search_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText('🔍 搜索待办事项...')
+        self.search_input.setStyleSheet('''
+            QLineEdit {
+                padding: 8px 12px;
+                border-radius: 15px;
+                border: 2px solid rgba(200, 180, 160, 0.5);
+                background-color: rgba(255, 255, 255, 0.9);
+                font-size: 12px;
+            }
+            QLineEdit:focus {
+                border-color: rgba(255, 180, 120, 0.8);
+                background-color: rgba(255, 255, 255, 1);
+            }
+        ''')
+        self.search_input.textChanged.connect(self.search_todos)
+        search_layout.addWidget(self.search_input)
+        
+        self.expanded_layout.addWidget(search_frame)
+        
+        mode_frame = QFrame()
+        mode_frame.setStyleSheet('background: transparent;')
+        mode_layout = QHBoxLayout(mode_frame)
+        mode_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.today_btn = QPushButton('📅 今日待办')
+        self.today_btn.setStyleSheet('''
+            QPushButton {
+                padding: 8px 15px;
+                border-radius: 15px;
+                background-color: rgba(255, 200, 150, 0.8);
+                border: none;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 180, 130, 0.9);
+            }
+        ''')
+        self.today_btn.clicked.connect(self.show_today)
+        mode_layout.addWidget(self.today_btn)
+        
+        self.calendar_btn = QPushButton('🗓️ 日历模式')
+        self.calendar_btn.setStyleSheet('''
+            QPushButton {
+                padding: 8px 15px;
+                border-radius: 15px;
+                background-color: rgba(200, 200, 255, 0.6);
+                border: none;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: rgba(180, 180, 255, 0.8);
+            }
+        ''')
+        self.calendar_btn.clicked.connect(self.show_calendar)
+        mode_layout.addWidget(self.calendar_btn)
+        
+        mode_layout.addStretch()
+        
+        self.date_label = QLabel(self.get_date_display())
+        self.date_label.setFont(QFont('Microsoft YaHei', 11))
+        mode_layout.addWidget(self.date_label)
+        
+        self.expanded_layout.addWidget(mode_frame)
+        
+        self.content_stack = QWidget()
+        self.content_layout = QVBoxLayout(self.content_stack)
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.todo_list_widget = QWidget()
+        self.todo_list_layout = QVBoxLayout(self.todo_list_widget)
+        self.todo_list_layout.setContentsMargins(0, 0, 0, 0)
+        self.todo_list_layout.setSpacing(5)
+        
+        self.todo_list = QListWidget()
+        self.todo_list.setStyleSheet('''
+            QListWidget {
+                border: none;
+                background-color: transparent;
+            }
+            QListWidget::item {
+                border-radius: 12px;
+                margin: 4px;
+                padding: 0;
+            }
+            QListWidget::item:selected {
+                background-color: transparent;
+            }
+        ''')
+        self.todo_list_layout.addWidget(self.todo_list)
+        
+        self.calendar_widget = QCalendarWidget()
+        self.calendar_widget.setStyleSheet('''
+            QCalendarWidget {
+                background-color: rgba(255, 255, 255, 0.95);
+                border-radius: 15px;
+                border: none;
+                font-size: 12px;
+            }
+            QCalendarWidget QToolButton {
+                background-color: rgba(255, 200, 150, 0.8);
+                border-radius: 10px;
+                padding: 5px;
+                border: none;
+            }
+            QCalendarWidget QToolButton:hover {
+                background-color: rgba(255, 180, 130, 0.9);
+            }
+            QCalendarWidget QMenu {
+                background-color: white;
+                border: 1px solid rgba(200, 180, 160, 0.5);
+                border-radius: 10px;
+            }
+            QCalendarWidget QWidget#qt_calendar_navigationbar {
+                background-color: rgba(255, 240, 230, 0.8);
+                border-top-left-radius: 15px;
+                border-top-right-radius: 15px;
+            }
+            QCalendarWidget QTableView {
+                selection-background-color: rgba(255, 180, 120, 0.5);
+                gridline-color: transparent;
+            }
+        ''')
+        self.calendar_widget.clicked.connect(self.on_calendar_clicked)
+        self.calendar_widget.hide()
+        
+        self.content_layout.addWidget(self.todo_list_widget)
+        self.content_layout.addWidget(self.calendar_widget)
+        
+        self.expanded_layout.addWidget(self.content_stack)
+        
+        add_frame = QFrame()
+        add_frame.setStyleSheet('background: transparent;')
+        add_layout = QHBoxLayout(add_frame)
+        add_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.new_todo_input = QLineEdit()
+        self.new_todo_input.setPlaceholderText('✏️ 添加新的待办事项...')
+        self.new_todo_input.setStyleSheet('''
+            QLineEdit {
+                padding: 10px 15px;
+                border-radius: 18px;
+                border: 2px solid rgba(255, 200, 150, 0.5);
+                background-color: rgba(255, 255, 255, 0.9);
+                font-size: 13px;
+            }
+            QLineEdit:focus {
+                border-color: rgba(255, 180, 120, 0.8);
+                background-color: rgba(255, 255, 255, 1);
+            }
+        ''')
+        self.new_todo_input.returnPressed.connect(self.add_new_todo)
+        add_layout.addWidget(self.new_todo_input)
+        
+        self.add_btn = QPushButton('➕')
+        self.add_btn.setFixedSize(40, 40)
+        self.add_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(255, 150, 100, 0.9);
+                border-radius: 20px;
+                font-size: 20px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 130, 80, 1);
+            }
+        ''')
+        self.add_btn.clicked.connect(self.add_new_todo)
+        add_layout.addWidget(self.add_btn)
+        
+        self.expanded_layout.addWidget(add_frame)
+        
+        self.main_layout.addWidget(self.expanded_widget)
+    
+    def create_collapsed_ui(self):
+        self.collapsed_widget = QWidget(self)
+        self.collapsed_widget.setFixedSize(80, 80)
+        collapsed_layout = QVBoxLayout(self.collapsed_widget)
+        collapsed_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.smiley_label = QLabel('😊')
+        self.smiley_label.setAlignment(Qt.AlignCenter)
+        self.smiley_label.setStyleSheet('''
+            QLabel {
+                font-size: 40px;
+                background-color: rgba(255, 200, 150, 0.9);
+                border-radius: 40px;
+                border: 3px solid rgba(255, 180, 120, 0.8);
+            }
+        ''')
+        self.smiley_label.mousePressEvent = self.collapsed_clicked
+        
+        collapsed_layout.addWidget(self.smiley_label)
+        self.main_layout.addWidget(self.collapsed_widget)
+    
+    def get_date_display(self):
+        date = datetime.strptime(self.current_date, '%Y-%m-%d')
+        weekdays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+        weekday = weekdays[date.weekday()]
+        return f'{self.current_date} {weekday}'
+    
+    def apply_theme(self):
+        theme = self.config.config.get('theme', 'light')
+        is_transparent = self.config.config.get('is_transparent', False)
+        
+        if theme == 'light':
+            bg_color = 'rgba(255, 248, 240, 0.95)' if not is_transparent else 'rgba(255, 248, 240, 0.7)'
+            text_color = '#5a4a3a'
+        else:
+            bg_color = 'rgba(45, 45, 60, 0.95)' if not is_transparent else 'rgba(45, 45, 60, 0.7)'
+            text_color = '#e0e0e0'
+        
+        self.setStyleSheet(f'''
+            MainWindow {{
+                background-color: {bg_color};
+                border-radius: 20px;
+            }}
+            QWidget {{
+                color: {text_color};
+                font-family: 'Microsoft YaHei';
+            }}
+        ''')
+    
+    def update_geometry(self):
+        geometry = self.config.config.get('window_geometry', {
+            'x': 100, 'y': 100, 'width': 400, 'height': 500
+        })
+        if self.is_expanded:
+            self.setGeometry(
+                geometry.get('x', 100),
+                geometry.get('y', 100),
+                geometry.get('width', 400),
+                geometry.get('height', 500)
+            )
+        else:
+            self.setGeometry(
+                self.x(),
+                self.y(),
+                100,
+                100
+            )
+    
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        theme = self.config.config.get('theme', 'light')
+        is_transparent = self.config.config.get('is_transparent', False)
+        
+        if self.is_expanded:
+            if theme == 'light':
+                base_color = QColor(255, 248, 240)
+                accent_color = QColor(255, 200, 150)
+            else:
+                base_color = QColor(45, 45, 60)
+                accent_color = QColor(80, 80, 100)
+            
+            alpha = 240 if not is_transparent else 180
+            base_color.setAlpha(alpha)
+            
+            path = QPainterPath()
+            path.addRoundedRect(0, 0, self.width(), self.height(), 20, 20)
+            painter.fillPath(path, base_color)
+            
+            painter.setPen(QPen(accent_color, 2))
+            painter.drawPath(path)
+            
+            if theme == 'light':
+                painter.setPen(QPen(QColor(255, 220, 200), 1))
+                for i in range(50, self.height(), 25):
+                    painter.drawLine(20, i, self.width() - 20, i)
+        else:
+            if theme == 'light':
+                color = QColor(255, 200, 150)
+            else:
+                color = QColor(80, 80, 100)
+            
+            color.setAlpha(240)
+            painter.setBrush(QBrush(color))
+            painter.setPen(Qt.NoPen)
+            painter.drawEllipse(10, 10, 80, 80)
+    
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.drag_position = event.globalPos() - self.frameGeometry().topLeft()
+            event.accept()
+    
+    def mouseMoveEvent(self, event):
+        if event.buttons() == Qt.LeftButton and self.drag_position:
+            self.move(event.globalPos() - self.drag_position)
+            event.accept()
+    
+    def mouseReleaseEvent(self, event):
+        self.drag_position = None
+        if self.is_expanded:
+            self.config.set_window_geometry(
+                self.x(), self.y(), self.width(), self.height()
+            )
+    
+    def toggle_expand(self):
+        if self.is_expanded:
+            self.is_expanded = False
+            self.expanded_widget.hide()
+            self.collapsed_widget.show()
+            self.setFixedSize(100, 100)
+            self.config.set_window_geometry(self.x(), self.y(), 100, 100)
+        else:
+            self.is_expanded = True
+            self.collapsed_widget.hide()
+            self.expanded_widget.show()
+            geometry = self.config.config.get('window_geometry', {
+                'x': self.x(), 'y': self.y(), 'width': 400, 'height': 500
+            })
+            self.setGeometry(
+                geometry.get('x', self.x()),
+                geometry.get('y', self.y()),
+                geometry.get('width', 400),
+                geometry.get('height', 500)
+            )
+        self.update()
+    
+    def collapsed_clicked(self, event):
+        if event.button() == Qt.LeftButton:
+            self.toggle_expand()
+    
+    def show_today(self):
+        self.current_date = datetime.now().strftime('%Y-%m-%d')
+        self.date_label.setText(self.get_date_display())
+        self.todo_list_widget.show()
+        self.calendar_widget.hide()
+        self.refresh_todos()
+        
+        self.today_btn.setStyleSheet('''
+            QPushButton {
+                padding: 8px 15px;
+                border-radius: 15px;
+                background-color: rgba(255, 200, 150, 0.8);
+                border: none;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 180, 130, 0.9);
+            }
+        ''')
+        self.calendar_btn.setStyleSheet('''
+            QPushButton {
+                padding: 8px 15px;
+                border-radius: 15px;
+                background-color: rgba(200, 200, 255, 0.6);
+                border: none;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: rgba(180, 180, 255, 0.8);
+            }
+        ''')
+    
+    def show_calendar(self):
+        self.todo_list_widget.hide()
+        self.calendar_widget.show()
+        
+        self.today_btn.setStyleSheet('''
+            QPushButton {
+                padding: 8px 15px;
+                border-radius: 15px;
+                background-color: rgba(255, 200, 150, 0.6);
+                border: none;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 180, 130, 0.8);
+            }
+        ''')
+        self.calendar_btn.setStyleSheet('''
+            QPushButton {
+                padding: 8px 15px;
+                border-radius: 15px;
+                background-color: rgba(200, 200, 255, 0.8);
+                border: none;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: rgba(180, 180, 255, 0.9);
+            }
+        ''')
+    
+    def on_calendar_clicked(self, qdate):
+        self.current_date = qdate.toString('yyyy-MM-dd')
+        self.date_label.setText(self.get_date_display())
+        self.show_today()
+    
+    def refresh_todos(self):
+        self.todo_list.clear()
+        todos = self.config.get_todos(self.current_date)
+        
+        for todo in todos:
+            item_widget = TodoItem(todo, self.current_date, self.config)
+            list_item = QListWidgetItem(self.todo_list)
+            list_item.setSizeHint(item_widget.sizeHint())
+            self.todo_list.setItemWidget(list_item, item_widget)
+        
+        if not todos:
+            empty_label = QLabel('✨ 今天还没有待办事项哦~')
+            empty_label.setAlignment(Qt.AlignCenter)
+            empty_label.setStyleSheet('''
+                QLabel {
+                    color: #9e9e9e;
+                    font-size: 14px;
+                    padding: 20px;
+                }
+            ''')
+            list_item = QListWidgetItem(self.todo_list)
+            list_item.setSizeHint(empty_label.sizeHint())
+            self.todo_list.setItemWidget(list_item, empty_label)
+    
+    def add_new_todo(self):
+        text = self.new_todo_input.text().strip()
+        if text:
+            self.config.add_todo(self.current_date, text)
+            self.new_todo_input.clear()
+            self.refresh_todos()
+    
+    def delete_todo(self, todo_id):
+        reply = QMessageBox.question(
+            self, '确认删除',
+            '确定要删除这个待办事项吗？',
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply == QMessageBox.Yes:
+            self.config.delete_todo(self.current_date, todo_id)
+            self.refresh_todos()
+    
+    def search_todos(self, keyword):
+        if not keyword.strip():
+            self.refresh_todos()
+            return
+        
+        results = self.config.search_todos(keyword)
+        self.todo_list.clear()
+        
+        if results:
+            for result in results:
+                result_widget = QWidget()
+                result_layout = QVBoxLayout(result_widget)
+                result_layout.setContentsMargins(10, 10, 10, 10)
+                
+                date_label = QLabel(f'📅 {result["date"]}')
+                date_label.setStyleSheet('''
+                    QLabel {
+                        color: #ff9800;
+                        font-size: 11px;
+                        font-weight: bold;
+                    }
+                ''')
+                result_layout.addWidget(date_label)
+                
+                todo_label = QLabel(result['todo']['text'])
+                todo_label.setStyleSheet('''
+                    QLabel {
+                        color: #5a4a3a;
+                        font-size: 13px;
+                    }
+                ''')
+                todo_label.setWordWrap(True)
+                result_layout.addWidget(todo_label)
+                
+                result_widget.setStyleSheet('''
+                    QWidget {
+                        background-color: rgba(255, 248, 240, 0.9);
+                        border-radius: 12px;
+                        border: 1px solid rgba(200, 180, 160, 0.3);
+                    }
+                ''')
+                
+                result_widget.date = result['date']
+                
+                list_item = QListWidgetItem(self.todo_list)
+                list_item.setSizeHint(result_widget.sizeHint())
+                self.todo_list.setItemWidget(list_item, result_widget)
+        else:
+            empty_label = QLabel('🔍 没有找到匹配的待办事项')
+            empty_label.setAlignment(Qt.AlignCenter)
+            empty_label.setStyleSheet('''
+                QLabel {
+                    color: #9e9e9e;
+                    font-size: 14px;
+                    padding: 20px;
+                }
+            ''')
+            list_item = QListWidgetItem(self.todo_list)
+            list_item.setSizeHint(empty_label.sizeHint())
+            self.todo_list.setItemWidget(list_item, empty_label)
+    
+    def toggle_lock(self):
+        if self.config.has_password():
+            self.show_password_dialog()
+        else:
+            self.show_set_password_dialog()
+    
+    def show_password_dialog(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle('🔒 验证密码')
+        dialog.setFixedSize(300, 180)
+        dialog.setStyleSheet('''
+            QDialog {
+                background-color: rgba(255, 248, 240, 0.98);
+                border-radius: 15px;
+            }
+            QLabel {
+                color: #5a4a3a;
+                font-size: 13px;
+            }
+            QLineEdit {
+                padding: 10px;
+                border-radius: 10px;
+                border: 2px solid rgba(255, 200, 150, 0.5);
+                background-color: white;
+                font-size: 14px;
+            }
+            QPushButton {
+                padding: 10px 20px;
+                border-radius: 10px;
+                background-color: rgba(255, 150, 100, 0.9);
+                border: none;
+                font-size: 13px;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 130, 80, 1);
+            }
+        ''')
+        
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        label = QLabel('请输入密码:')
+        layout.addWidget(label)
+        
+        password_input = QLineEdit()
+        password_input.setEchoMode(QLineEdit.Password)
+        layout.addWidget(password_input)
+        
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        
+        cancel_btn = QPushButton('取消')
+        cancel_btn.clicked.connect(dialog.reject)
+        btn_layout.addWidget(cancel_btn)
+        
+        ok_btn = QPushButton('确定')
+        ok_btn.clicked.connect(lambda: self.verify_password(dialog, password_input.text()))
+        btn_layout.addWidget(ok_btn)
+        
+        layout.addLayout(btn_layout)
+        
+        dialog.exec_()
+    
+    def verify_password(self, dialog, password):
+        if self.config.check_password(password):
+            dialog.accept()
+            self.config.config['is_locked'] = False
+            self.lock_btn.setText('🔓')
+            self.config.save_config()
+        else:
+            QMessageBox.warning(self, '错误', '密码错误，请重试！')
+    
+    def show_set_password_dialog(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle('🔑 设置密码')
+        dialog.setFixedSize(320, 220)
+        dialog.setStyleSheet('''
+            QDialog {
+                background-color: rgba(255, 248, 240, 0.98);
+                border-radius: 15px;
+            }
+            QLabel {
+                color: #5a4a3a;
+                font-size: 13px;
+            }
+            QLineEdit {
+                padding: 10px;
+                border-radius: 10px;
+                border: 2px solid rgba(200, 200, 255, 0.5);
+                background-color: white;
+                font-size: 14px;
+            }
+            QPushButton {
+                padding: 10px 20px;
+                border-radius: 10px;
+                background-color: rgba(100, 150, 255, 0.9);
+                border: none;
+                font-size: 13px;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: rgba(80, 130, 255, 1);
+            }
+        ''')
+        
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
+        
+        label1 = QLabel('设置新密码:')
+        layout.addWidget(label1)
+        
+        password_input1 = QLineEdit()
+        password_input1.setEchoMode(QLineEdit.Password)
+        layout.addWidget(password_input1)
+        
+        label2 = QLabel('确认密码:')
+        layout.addWidget(label2)
+        
+        password_input2 = QLineEdit()
+        password_input2.setEchoMode(QLineEdit.Password)
+        layout.addWidget(password_input2)
+        
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        
+        cancel_btn = QPushButton('取消')
+        cancel_btn.clicked.connect(dialog.reject)
+        btn_layout.addWidget(cancel_btn)
+        
+        ok_btn = QPushButton('确定')
+        ok_btn.clicked.connect(
+            lambda: self.set_new_password(
+                dialog, 
+                password_input1.text(), 
+                password_input2.text()
+            )
+        )
+        btn_layout.addWidget(ok_btn)
+        
+        layout.addLayout(btn_layout)
+        
+        dialog.exec_()
+    
+    def set_new_password(self, dialog, password1, password2):
+        if not password1 or not password2:
+            QMessageBox.warning(self, '错误', '密码不能为空！')
+            return
+        
+        if password1 != password2:
+            QMessageBox.warning(self, '错误', '两次输入的密码不一致！')
+            return
+        
+        self.config.set_password(password1)
+        dialog.accept()
+        QMessageBox.information(self, '成功', '密码设置成功！')
+    
+    def show_settings(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle('⚙️ 设置')
+        dialog.setFixedSize(350, 300)
+        dialog.setStyleSheet('''
+            QDialog {
+                background-color: rgba(255, 248, 240, 0.98);
+                border-radius: 15px;
+            }
+            QLabel {
+                color: #5a4a3a;
+                font-size: 13px;
+            }
+            QPushButton {
+                padding: 10px 20px;
+                border-radius: 10px;
+                border: none;
+                font-size: 13px;
+            }
+        ''')
+        
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(25, 25, 25, 25)
+        layout.setSpacing(20)
+        
+        theme_label = QLabel('🎨 主题设置:')
+        theme_label.setFont(QFont('Microsoft YaHei', 11, QFont.Bold))
+        layout.addWidget(theme_label)
+        
+        theme_layout = QHBoxLayout()
+        
+        self.light_theme_btn = QPushButton('☀️ 明亮')
+        is_light = self.config.config.get('theme') == 'light'
+        self.light_theme_btn.setStyleSheet(f'''
+            QPushButton {{
+                background-color: {'rgba(255, 200, 150, 0.9)' if is_light else 'rgba(230, 230, 230, 0.8)'};
+                color: {'white' if is_light else '#5a4a3a'};
+            }}
+            QPushButton:hover {{
+                background-color: rgba(255, 180, 130, 0.9);
+            }}
+        ''')
+        self.light_theme_btn.clicked.connect(lambda: self.set_theme('light'))
+        theme_layout.addWidget(self.light_theme_btn)
+        
+        self.dark_theme_btn = QPushButton('🌙 暗黑')
+        is_dark = self.config.config.get('theme') == 'dark'
+        self.dark_theme_btn.setStyleSheet(f'''
+            QPushButton {{
+                background-color: {'rgba(80, 80, 100, 0.9)' if is_dark else 'rgba(230, 230, 230, 0.8)'};
+                color: {'white' if is_dark else '#5a4a3a'};
+            }}
+            QPushButton:hover {{
+                background-color: rgba(60, 60, 80, 0.9);
+            }}
+        ''')
+        self.dark_theme_btn.clicked.connect(lambda: self.set_theme('dark'))
+        theme_layout.addWidget(self.dark_theme_btn)
+        
+        layout.addLayout(theme_layout)
+        
+        transparent_label = QLabel('✨ 透明度:')
+        transparent_label.setFont(QFont('Microsoft YaHei', 11, QFont.Bold))
+        layout.addWidget(transparent_label)
+        
+        transparent_layout = QHBoxLayout()
+        
+        self.opaque_btn = QPushButton('🖼️ 不透明')
+        is_opaque = not self.config.config.get('is_transparent')
+        self.opaque_btn.setStyleSheet(f'''
+            QPushButton {{
+                background-color: {'rgba(100, 180, 255, 0.9)' if is_opaque else 'rgba(230, 230, 230, 0.8)'};
+                color: {'white' if is_opaque else '#5a4a3a'};
+            }}
+            QPushButton:hover {{
+                background-color: rgba(80, 160, 255, 0.9);
+            }}
+        ''')
+        self.opaque_btn.clicked.connect(lambda: self.set_transparent(False))
+        transparent_layout.addWidget(self.opaque_btn)
+        
+        self.transparent_btn = QPushButton('💎 透明')
+        is_transparent = self.config.config.get('is_transparent')
+        self.transparent_btn.setStyleSheet(f'''
+            QPushButton {{
+                background-color: {'rgba(100, 180, 255, 0.9)' if is_transparent else 'rgba(230, 230, 230, 0.8)'};
+                color: {'white' if is_transparent else '#5a4a3a'};
+            }}
+            QPushButton:hover {{
+                background-color: rgba(80, 160, 255, 0.9);
+            }}
+        ''')
+        self.transparent_btn.clicked.connect(lambda: self.set_transparent(True))
+        transparent_layout.addWidget(self.transparent_btn)
+        
+        layout.addLayout(transparent_layout)
+        
+        layout.addStretch()
+        
+        close_btn = QPushButton('关闭')
+        close_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(200, 200, 200, 0.8);
+                color: #5a4a3a;
+            }
+            QPushButton:hover {
+                background-color: rgba(180, 180, 180, 0.9);
+            }
+        ''')
+        close_btn.clicked.connect(dialog.accept)
+        layout.addWidget(close_btn)
+        
+        dialog.exec_()
+    
+    def set_theme(self, theme):
+        self.config.set_theme(theme)
+        self.apply_theme()
+        self.update_theme_buttons()
+        self.refresh_todos()
+    
+    def set_transparent(self, is_transparent):
+        self.config.set_transparent(is_transparent)
+        self.apply_theme()
+        self.update_transparent_buttons()
+        self.update()
+    
+    def update_theme_buttons(self):
+        is_light = self.config.config.get('theme') == 'light'
+        is_dark = self.config.config.get('theme') == 'dark'
+        
+        self.light_theme_btn.setStyleSheet(f'''
+            QPushButton {{
+                background-color: {'rgba(255, 200, 150, 0.9)' if is_light else 'rgba(230, 230, 230, 0.8)'};
+                color: {'white' if is_light else '#5a4a3a'};
+            }}
+            QPushButton:hover {{
+                background-color: rgba(255, 180, 130, 0.9);
+            }}
+        ''')
+        
+        self.dark_theme_btn.setStyleSheet(f'''
+            QPushButton {{
+                background-color: {'rgba(80, 80, 100, 0.9)' if is_dark else 'rgba(230, 230, 230, 0.8)'};
+                color: {'white' if is_dark else '#5a4a3a'};
+            }}
+            QPushButton:hover {{
+                background-color: rgba(60, 60, 80, 0.9);
+            }}
+        ''')
+    
+    def update_transparent_buttons(self):
+        is_opaque = not self.config.config.get('is_transparent')
+        is_transparent = self.config.config.get('is_transparent')
+        
+        self.opaque_btn.setStyleSheet(f'''
+            QPushButton {{
+                background-color: {'rgba(100, 180, 255, 0.9)' if is_opaque else 'rgba(230, 230, 230, 0.8)'};
+                color: {'white' if is_opaque else '#5a4a3a'};
+            }}
+            QPushButton:hover {{
+                background-color: rgba(80, 160, 255, 0.9);
+            }}
+        ''')
+        
+        self.transparent_btn.setStyleSheet(f'''
+            QPushButton {{
+                background-color: {'rgba(100, 180, 255, 0.9)' if is_transparent else 'rgba(230, 230, 230, 0.8)'};
+                color: {'white' if is_transparent else '#5a4a3a'};
+            }}
+            QPushButton:hover {{
+                background-color: rgba(80, 160, 255, 0.9);
+            }}
+        ''')
+    
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.refresh_todos()
+
+def main():
+    app = QApplication(sys.argv)
+    app.setApplicationName('可爱便签')
+    app.setApplicationDisplayName('可爱便签')
+    
+    window = MainWindow()
+    window.show()
+    
+    sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()
