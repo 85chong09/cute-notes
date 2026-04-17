@@ -398,6 +398,8 @@ class MainWindow(QWidget):
             }
         ''')
         self.smiley_label.mousePressEvent = self.collapsed_clicked
+        self.smiley_label.mouseMoveEvent = self.collapsed_moved
+        self.smiley_label.mouseReleaseEvent = self.collapsed_released
         
         collapsed_layout.addWidget(self.smiley_label)
         self.main_layout.addWidget(self.collapsed_widget)
@@ -418,6 +420,19 @@ class MainWindow(QWidget):
         else:
             bg_color = 'rgba(45, 45, 60, 0.95)' if not is_transparent else 'rgba(45, 45, 60, 0.7)'
             text_color = '#e0e0e0'
+        
+        self.current_bg_color = bg_color
+        self.current_text_color = text_color
+        
+        self._update_window_style()
+    
+    def _update_window_style(self):
+        if hasattr(self, 'is_expanded') and not self.is_expanded:
+            bg_color = 'transparent'
+        else:
+            bg_color = getattr(self, 'current_bg_color', 'rgba(255, 248, 240, 0.95)')
+        
+        text_color = getattr(self, 'current_text_color', '#5a4a3a')
         
         self.setStyleSheet(f'''
             MainWindow {{
@@ -518,11 +533,28 @@ class MainWindow(QWidget):
                 geometry.get('width', 400),
                 geometry.get('height', 500)
             )
+        self._update_window_style()
         self.update()
     
     def collapsed_clicked(self, event):
         if event.button() == Qt.LeftButton:
-            self.toggle_expand()
+            self._click_start_pos = event.globalPos()
+            self.drag_position = event.globalPos() - self.frameGeometry().topLeft()
+            event.accept()
+    
+    def collapsed_moved(self, event):
+        if event.buttons() == Qt.LeftButton and self.drag_position:
+            self.move(event.globalPos() - self.drag_position)
+            event.accept()
+    
+    def collapsed_released(self, event):
+        if event.button() == Qt.LeftButton:
+            if hasattr(self, '_click_start_pos'):
+                delta = event.globalPos() - self._click_start_pos
+                if abs(delta.x()) < 5 and abs(delta.y()) < 5:
+                    self.toggle_expand()
+            self.drag_position = None
+            event.accept()
     
     def show_today(self):
         self.current_date = datetime.now().strftime('%Y-%m-%d')
