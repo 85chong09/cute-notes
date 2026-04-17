@@ -479,15 +479,7 @@ class MainWindow(QWidget):
                 for i in range(50, self.height(), 25):
                     painter.drawLine(20, i, self.width() - 20, i)
         else:
-            if theme == 'light':
-                color = QColor(255, 200, 150)
-            else:
-                color = QColor(80, 80, 100)
-            
-            color.setAlpha(240)
-            painter.setBrush(QBrush(color))
-            painter.setPen(Qt.NoPen)
-            painter.drawEllipse(10, 10, 80, 80)
+            pass
     
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -534,35 +526,7 @@ class MainWindow(QWidget):
     
     def show_today(self):
         self.current_date = datetime.now().strftime('%Y-%m-%d')
-        self.date_label.setText(self.get_date_display())
-        self.todo_list_widget.show()
-        self.calendar_widget.hide()
-        self.refresh_todos()
-        
-        self.today_btn.setStyleSheet('''
-            QPushButton {
-                padding: 8px 15px;
-                border-radius: 15px;
-                background-color: rgba(255, 200, 150, 0.8);
-                border: none;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background-color: rgba(255, 180, 130, 0.9);
-            }
-        ''')
-        self.calendar_btn.setStyleSheet('''
-            QPushButton {
-                padding: 8px 15px;
-                border-radius: 15px;
-                background-color: rgba(200, 200, 255, 0.6);
-                border: none;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background-color: rgba(180, 180, 255, 0.8);
-            }
-        ''')
+        self.show_todo_list()
     
     def show_calendar(self):
         self.todo_list_widget.hide()
@@ -593,10 +557,40 @@ class MainWindow(QWidget):
             }
         ''')
     
+    def show_todo_list(self):
+        self.date_label.setText(self.get_date_display())
+        self.todo_list_widget.show()
+        self.calendar_widget.hide()
+        self.refresh_todos()
+        
+        self.today_btn.setStyleSheet('''
+            QPushButton {
+                padding: 8px 15px;
+                border-radius: 15px;
+                background-color: rgba(255, 200, 150, 0.8);
+                border: none;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 180, 130, 0.9);
+            }
+        ''')
+        self.calendar_btn.setStyleSheet('''
+            QPushButton {
+                padding: 8px 15px;
+                border-radius: 15px;
+                background-color: rgba(200, 200, 255, 0.6);
+                border: none;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: rgba(180, 180, 255, 0.8);
+            }
+        ''')
+    
     def on_calendar_clicked(self, qdate):
         self.current_date = qdate.toString('yyyy-MM-dd')
-        self.date_label.setText(self.get_date_display())
-        self.show_today()
+        self.show_todo_list()
     
     def refresh_todos(self):
         self.todo_list.clear()
