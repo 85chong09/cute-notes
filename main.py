@@ -3,7 +3,8 @@ from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, 
     QLabel, QPushButton, QLineEdit, QListWidget, 
     QListWidgetItem, QCalendarWidget, QDialog, 
-    QMessageBox, QScrollArea, QFrame, QSplitter
+    QMessageBox, QScrollArea, QFrame, QSplitter,
+    QMenu
 )
 from PyQt5.QtCore import Qt, QPoint, QDate, QPropertyAnimation, QRect, QSize, pyqtProperty
 from PyQt5.QtGui import (
@@ -13,6 +14,39 @@ from PyQt5.QtGui import (
 )
 from datetime import datetime
 from config import ConfigManager
+
+class CustomCalendarWidget(QCalendarWidget):
+    def __init__(self, config, parent=None):
+        super().__init__(parent)
+        self.config = config
+        self.setVerticalHeaderFormat(QCalendarWidget.NoVerticalHeader)
+        self.setGridVisible(False)
+    
+    def paintCell(self, painter, rect, date):
+        date_str = date.toString('yyyy-MM-dd')
+        todos = self.config.get_todos(date_str)
+        
+        painter.save()
+        
+        if todos:
+            all_completed = all(todo.get('completed', False) for todo in todos)
+            any_incomplete = any(not todo.get('completed', False) for todo in todos)
+            
+            if all_completed:
+                painter.fillRect(rect, QColor(100, 200, 100, 150))
+            elif any_incomplete:
+                painter.fillRect(rect, QColor(255, 100, 100, 150))
+        
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        if date == QDate.currentDate():
+            painter.setPen(QPen(QColor(255, 150, 100), 2))
+            painter.drawRect(rect.adjusted(1, 1, -1, -1))
+        
+        painter.setPen(QPen(QColor(90, 74, 58)))
+        painter.drawText(rect, Qt.AlignCenter, str(date.day()))
+        
+        painter.restore()
 
 class TodoItem(QWidget):
     def __init__(self, todo_item, date_str, config, parent=None):
@@ -131,8 +165,9 @@ class MainWindow(QWidget):
         
         self.create_expanded_ui()
         self.create_collapsed_ui()
+        self.create_locked_ui()
         
-        self.collapsed_widget.hide()
+        self.apply_lock_state()
     
     def create_expanded_ui(self):
         self.expanded_widget = QWidget(self)
@@ -199,6 +234,23 @@ class MainWindow(QWidget):
         ''')
         self.minimize_btn.clicked.connect(self.toggle_expand)
         header_layout.addWidget(self.minimize_btn)
+        
+        self.close_btn = QPushButton('×')
+        self.close_btn.setFixedSize(30, 30)
+        self.close_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(255, 100, 100, 0.8);
+                border-radius: 15px;
+                font-size: 20px;
+                border: none;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 80, 80, 0.9);
+            }
+        ''')
+        self.close_btn.clicked.connect(self.close_window)
+        header_layout.addWidget(self.close_btn)
         
         self.expanded_layout.addWidget(header_frame)
         
@@ -298,34 +350,34 @@ class MainWindow(QWidget):
         ''')
         self.todo_list_layout.addWidget(self.todo_list)
         
-        self.calendar_widget = QCalendarWidget()
+        self.calendar_widget = CustomCalendarWidget(self.config)
         self.calendar_widget.setStyleSheet('''
-            QCalendarWidget {
+            CustomCalendarWidget {
                 background-color: rgba(255, 255, 255, 0.95);
                 border-radius: 15px;
                 border: none;
                 font-size: 12px;
             }
-            QCalendarWidget QToolButton {
+            CustomCalendarWidget QToolButton {
                 background-color: rgba(255, 200, 150, 0.8);
                 border-radius: 10px;
                 padding: 5px;
                 border: none;
             }
-            QCalendarWidget QToolButton:hover {
+            CustomCalendarWidget QToolButton:hover {
                 background-color: rgba(255, 180, 130, 0.9);
             }
-            QCalendarWidget QMenu {
+            CustomCalendarWidget QMenu {
                 background-color: white;
                 border: 1px solid rgba(200, 180, 160, 0.5);
                 border-radius: 10px;
             }
-            QCalendarWidget QWidget#qt_calendar_navigationbar {
+            CustomCalendarWidget QWidget#qt_calendar_navigationbar {
                 background-color: rgba(255, 240, 230, 0.8);
                 border-top-left-radius: 15px;
                 border-top-right-radius: 15px;
             }
-            QCalendarWidget QTableView {
+            CustomCalendarWidget QTableView {
                 selection-background-color: rgba(255, 180, 120, 0.5);
                 gridline-color: transparent;
             }
@@ -403,6 +455,110 @@ class MainWindow(QWidget):
         
         collapsed_layout.addWidget(self.smiley_label)
         self.main_layout.addWidget(self.collapsed_widget)
+    
+    def create_locked_ui(self):
+        self.locked_widget = QWidget(self)
+        self.locked_widget.setFixedSize(100, 100)
+        locked_layout = QVBoxLayout(self.locked_widget)
+        locked_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.lock_label = QLabel('🔒')
+        self.lock_label.setAlignment(Qt.AlignCenter)
+        self.lock_label.setStyleSheet('''
+            QLabel {
+                font-size: 40px;
+                background-color: rgba(100, 100, 120, 0.9);
+                border-radius: 50px;
+                border: 3px solid rgba(80, 80, 100, 0.8);
+            }
+        ''')
+        self.lock_label.mousePressEvent = self.locked_clicked
+        self.lock_label.mouseMoveEvent = self.locked_moved
+        self.lock_label.mouseReleaseEvent = self.locked_released
+        
+        locked_layout.addWidget(self.lock_label)
+        self.main_layout.addWidget(self.locked_widget)
+    
+    def apply_lock_state(self):
+        is_locked = self.config.config.get('is_locked', False)
+        
+        if is_locked:
+            self.expanded_widget.hide()
+            self.collapsed_widget.hide()
+            self.locked_widget.show()
+            self.setFixedSize(100, 100)
+        else:
+            self.locked_widget.hide()
+            if self.is_expanded:
+                self.collapsed_widget.hide()
+                self.expanded_widget.show()
+                geometry = self.config.config.get('window_geometry', {
+                    'x': self.x(), 'y': self.y(), 'width': 400, 'height': 500
+                })
+                self.setGeometry(
+                    geometry.get('x', self.x()),
+                    geometry.get('y', self.y()),
+                    geometry.get('width', 400),
+                    geometry.get('height', 500)
+                )
+            else:
+                self.expanded_widget.hide()
+                self.collapsed_widget.show()
+                self.setFixedSize(100, 100)
+        
+        self._update_window_style()
+        self.update()
+    
+    def locked_clicked(self, event):
+        if event.button() == Qt.LeftButton:
+            self._lock_click_start_pos = event.globalPos()
+            self.drag_position = event.globalPos() - self.frameGeometry().topLeft()
+            event.accept()
+        elif event.button() == Qt.RightButton:
+            self.show_locked_menu(event.globalPos())
+            event.accept()
+    
+    def locked_moved(self, event):
+        if event.buttons() == Qt.LeftButton and self.drag_position:
+            self.move(event.globalPos() - self.drag_position)
+            event.accept()
+    
+    def locked_released(self, event):
+        if event.button() == Qt.LeftButton:
+            if hasattr(self, '_lock_click_start_pos'):
+                delta = event.globalPos() - self._lock_click_start_pos
+                if abs(delta.x()) < 5 and abs(delta.y()) < 5:
+                    if self.config.has_password():
+                        self.show_password_dialog()
+            self.drag_position = None
+            event.accept()
+    
+    def show_locked_menu(self, pos):
+        menu = QMenu(self)
+        menu.setStyleSheet('''
+            QMenu {
+                background-color: rgba(255, 248, 240, 0.98);
+                border-radius: 10px;
+                padding: 5px;
+            }
+            QMenu::item {
+                padding: 8px 20px;
+                border-radius: 5px;
+                color: #5a4a3a;
+                font-size: 13px;
+            }
+            QMenu::item:selected {
+                background-color: rgba(255, 200, 150, 0.8);
+            }
+        ''')
+        
+        unlock_action = menu.addAction('解锁')
+        unlock_action.triggered.connect(self.show_password_dialog)
+        
+        close_action = menu.addAction('关闭')
+        close_action.triggered.connect(self.close_window)
+        
+        menu.exec_(pos)
     
     def get_date_display(self):
         date = datetime.strptime(self.current_date, '%Y-%m-%d')
@@ -514,6 +670,9 @@ class MainWindow(QWidget):
             )
     
     def toggle_expand(self):
+        if self.config.config.get('is_locked', False):
+            return
+        
         if self.is_expanded:
             self.is_expanded = False
             self.expanded_widget.hide()
@@ -536,10 +695,16 @@ class MainWindow(QWidget):
         self._update_window_style()
         self.update()
     
+    def close_window(self):
+        self.close()
+    
     def collapsed_clicked(self, event):
         if event.button() == Qt.LeftButton:
             self._click_start_pos = event.globalPos()
             self.drag_position = event.globalPos() - self.frameGeometry().topLeft()
+            event.accept()
+        elif event.button() == Qt.RightButton:
+            self.show_collapsed_menu(event.globalPos())
             event.accept()
     
     def collapsed_moved(self, event):
@@ -555,6 +720,33 @@ class MainWindow(QWidget):
                     self.toggle_expand()
             self.drag_position = None
             event.accept()
+    
+    def show_collapsed_menu(self, pos):
+        menu = QMenu(self)
+        menu.setStyleSheet('''
+            QMenu {
+                background-color: rgba(255, 248, 240, 0.98);
+                border-radius: 10px;
+                padding: 5px;
+            }
+            QMenu::item {
+                padding: 8px 20px;
+                border-radius: 5px;
+                color: #5a4a3a;
+                font-size: 13px;
+            }
+            QMenu::item:selected {
+                background-color: rgba(255, 200, 150, 0.8);
+            }
+        ''')
+        
+        expand_action = menu.addAction('展开')
+        expand_action.triggered.connect(self.toggle_expand)
+        
+        close_action = menu.addAction('关闭')
+        close_action.triggered.connect(self.close_window)
+        
+        menu.exec_(pos)
     
     def show_today(self):
         self.current_date = datetime.now().strftime('%Y-%m-%d')
@@ -727,10 +919,16 @@ class MainWindow(QWidget):
             self.todo_list.setItemWidget(list_item, empty_label)
     
     def toggle_lock(self):
-        if self.config.has_password():
+        if self.config.config.get('is_locked', False):
             self.show_password_dialog()
         else:
-            self.show_set_password_dialog()
+            if self.config.has_password():
+                self.config.config['is_locked'] = True
+                self.config.save_config()
+                self.lock_btn.setText('🔒')
+                self.apply_lock_state()
+            else:
+                self.show_set_password_dialog()
     
     def show_password_dialog(self):
         dialog = QDialog(self)
@@ -797,6 +995,7 @@ class MainWindow(QWidget):
             self.config.config['is_locked'] = False
             self.lock_btn.setText('🔓')
             self.config.save_config()
+            self.apply_lock_state()
         else:
             QMessageBox.warning(self, '错误', '密码错误，请重试！')
     
