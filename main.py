@@ -501,6 +501,10 @@ class MainWindow(QWidget):
             self.is_expanded = True
             self.collapsed_widget.hide()
             self.expanded_widget.show()
+            
+            self.setMinimumSize(380, 480)
+            self.setMaximumSize(16777215, 16777215)
+            
             geometry = self.config.config.get('window_geometry', {
                 'x': self.x(), 'y': self.y(), 'width': 400, 'height': 500
             })
@@ -516,6 +520,7 @@ class MainWindow(QWidget):
                 width,
                 height
             )
+            self.adjustSize()
         
         self._update_window_style()
         self.update()
@@ -693,6 +698,10 @@ class MainWindow(QWidget):
             self.is_expanded = True
             self.collapsed_widget.hide()
             self.expanded_widget.show()
+            
+            self.setMinimumSize(380, 480)
+            self.setMaximumSize(16777215, 16777215)
+            
             geometry = self.config.config.get('window_geometry', {
                 'x': self.x(), 'y': self.y(), 'width': 400, 'height': 500
             })
@@ -702,6 +711,7 @@ class MainWindow(QWidget):
                 geometry.get('width', 400),
                 geometry.get('height', 500)
             )
+            self.adjustSize()
         self._update_window_style()
         self.update()
     
