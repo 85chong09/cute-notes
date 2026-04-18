@@ -77,8 +77,6 @@ class TodoItem(QWidget):
                 background-color: {bg_color};
                 border-radius: 12px;
                 border: 1px solid rgba(200, 180, 160, 0.3);
-                padding: 8px;
-                margin: 4px;
             }}
             TodoItem:hover {{
                 background-color: {'#fff5e6' if theme == 'light' else '#454555'};
@@ -111,8 +109,8 @@ class TodoItem(QWidget):
         brush = QBrush(QColor(255, 200, 150)) if is_completed else QBrush(Qt.NoBrush)
         painter.setBrush(brush)
         
-        padding = 8
-        circle_size = 20
+        padding = 12
+        circle_size = 16
         circle_rect = QRect(padding, (self.height() - circle_size) // 2, circle_size, circle_size)
         painter.drawEllipse(circle_rect)
         
@@ -120,8 +118,8 @@ class TodoItem(QWidget):
             painter.setPen(QPen(QColor(90, 74, 58), 2))
             cx = padding + circle_size // 2
             cy = self.height() // 2
-            painter.drawLine(cx - 5, cy, cx - 1, cy + 5)
-            painter.drawLine(cx - 1, cy + 5, cx + 8, cy - 8)
+            painter.drawLine(cx - 4, cy, cx - 1, cy + 3)
+            painter.drawLine(cx - 1, cy + 3, cx + 6, cy - 6)
         
         font = QFont('Microsoft YaHei', 10)
         if is_completed:
@@ -129,9 +127,9 @@ class TodoItem(QWidget):
         painter.setFont(font)
         painter.setPen(QPen(current_color))
         
-        delete_btn_size = 25
-        text_left = padding + circle_size + 8
-        text_right = self.width() - padding - delete_btn_size - 8
+        delete_btn_size = 20
+        text_left = padding + circle_size + 10
+        text_right = self.width() - padding - delete_btn_size - 10
         text_rect = QRect(text_left, 5, text_right - text_left, self.height() - 10)
         painter.drawText(text_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.todo['text'])
         
@@ -144,12 +142,14 @@ class TodoItem(QWidget):
     
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            padding = 8
-            circle_rect = QRect(padding, (self.height() - 20) // 2, 20, 20)
+            padding = 12
+            circle_size = 16
+            delete_btn_size = 20
+            circle_rect = QRect(padding, (self.height() - circle_size) // 2, circle_size, circle_size)
             if circle_rect.contains(event.pos()):
                 self.toggle_completed()
             else:
-                delete_btn_rect = QRect(self.width() - padding - 25, (self.height() - 25) // 2, 25, 25)
+                delete_btn_rect = QRect(self.width() - padding - delete_btn_size, (self.height() - delete_btn_size) // 2, delete_btn_size, delete_btn_size)
                 if delete_btn_rect.contains(event.pos()):
                     self.main_window.delete_todo(self.todo['id'])
 
@@ -498,28 +498,24 @@ class MainWindow(QWidget):
             self.setFixedSize(100, 100)
         else:
             self.locked_widget.hide()
-            if self.is_expanded:
-                self.collapsed_widget.hide()
-                self.expanded_widget.show()
-                geometry = self.config.config.get('window_geometry', {
-                    'x': self.x(), 'y': self.y(), 'width': 400, 'height': 500
-                })
-                width = geometry.get('width', 400)
-                height = geometry.get('height', 500)
-                if width < 380:
-                    width = 400
-                if height < 480:
-                    height = 500
-                self.setGeometry(
-                    geometry.get('x', self.x()),
-                    geometry.get('y', self.y()),
-                    width,
-                    height
-                )
-            else:
-                self.expanded_widget.hide()
-                self.collapsed_widget.show()
-                self.setFixedSize(100, 100)
+            self.is_expanded = True
+            self.collapsed_widget.hide()
+            self.expanded_widget.show()
+            geometry = self.config.config.get('window_geometry', {
+                'x': self.x(), 'y': self.y(), 'width': 400, 'height': 500
+            })
+            width = geometry.get('width', 400)
+            height = geometry.get('height', 500)
+            if width < 380:
+                width = 400
+            if height < 480:
+                height = 500
+            self.setGeometry(
+                geometry.get('x', self.x()),
+                geometry.get('y', self.y()),
+                width,
+                height
+            )
         
         self._update_window_style()
         self.update()
