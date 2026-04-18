@@ -49,11 +49,12 @@ class CustomCalendarWidget(QCalendarWidget):
         painter.restore()
 
 class TodoItem(QWidget):
-    def __init__(self, todo_item, date_str, config, parent=None):
+    def __init__(self, todo_item, date_str, config, main_window, parent=None):
         super().__init__(parent)
         self.todo = todo_item
         self.date_str = date_str
         self.config = config
+        self.main_window = main_window
         self.is_expanded = True
         self.setMinimumHeight(50)
         self.setMaximumHeight(100)
@@ -110,13 +111,17 @@ class TodoItem(QWidget):
         brush = QBrush(QColor(255, 200, 150)) if is_completed else QBrush(Qt.NoBrush)
         painter.setBrush(brush)
         
-        circle_rect = QRect(8, (self.height() - 20) // 2, 20, 20)
+        padding = 8
+        circle_size = 20
+        circle_rect = QRect(padding, (self.height() - circle_size) // 2, circle_size, circle_size)
         painter.drawEllipse(circle_rect)
         
         if is_completed:
             painter.setPen(QPen(QColor(90, 74, 58), 2))
-            painter.drawLine(12, self.height() // 2, 18, self.height() // 2 + 5)
-            painter.drawLine(18, self.height() // 2 + 5, 28, self.height() // 2 - 5)
+            cx = padding + circle_size // 2
+            cy = self.height() // 2
+            painter.drawLine(cx - 5, cy, cx - 1, cy + 5)
+            painter.drawLine(cx - 1, cy + 5, cx + 8, cy - 8)
         
         font = QFont('Microsoft YaHei', 10)
         if is_completed:
@@ -124,10 +129,13 @@ class TodoItem(QWidget):
         painter.setFont(font)
         painter.setPen(QPen(current_color))
         
-        text_rect = QRect(38, 5, self.width() - 100, self.height() - 10)
+        delete_btn_size = 25
+        text_left = padding + circle_size + 8
+        text_right = self.width() - padding - delete_btn_size - 8
+        text_rect = QRect(text_left, 5, text_right - text_left, self.height() - 10)
         painter.drawText(text_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.todo['text'])
         
-        delete_btn_rect = QRect(self.width() - 55, (self.height() - 25) // 2, 25, 25)
+        delete_btn_rect = QRect(self.width() - padding - delete_btn_size, (self.height() - delete_btn_size) // 2, delete_btn_size, delete_btn_size)
         painter.setPen(Qt.NoPen)
         painter.setBrush(QBrush(QColor(255, 100, 100)))
         painter.drawEllipse(delete_btn_rect)
@@ -136,13 +144,14 @@ class TodoItem(QWidget):
     
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            circle_rect = QRect(8, (self.height() - 20) // 2, 20, 20)
+            padding = 8
+            circle_rect = QRect(padding, (self.height() - 20) // 2, 20, 20)
             if circle_rect.contains(event.pos()):
                 self.toggle_completed()
             else:
-                delete_btn_rect = QRect(self.width() - 55, (self.height() - 25) // 2, 25, 25)
+                delete_btn_rect = QRect(self.width() - padding - 25, (self.height() - 25) // 2, 25, 25)
                 if delete_btn_rect.contains(event.pos()):
-                    self.parent().delete_todo(self.todo['id'])
+                    self.main_window.delete_todo(self.todo['id'])
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -495,11 +504,17 @@ class MainWindow(QWidget):
                 geometry = self.config.config.get('window_geometry', {
                     'x': self.x(), 'y': self.y(), 'width': 400, 'height': 500
                 })
+                width = geometry.get('width', 400)
+                height = geometry.get('height', 500)
+                if width < 380:
+                    width = 400
+                if height < 480:
+                    height = 500
                 self.setGeometry(
                     geometry.get('x', self.x()),
                     geometry.get('y', self.y()),
-                    geometry.get('width', 400),
-                    geometry.get('height', 500)
+                    width,
+                    height
                 )
             else:
                 self.expanded_widget.hide()
@@ -678,7 +693,6 @@ class MainWindow(QWidget):
             self.expanded_widget.hide()
             self.collapsed_widget.show()
             self.setFixedSize(100, 100)
-            self.config.set_window_geometry(self.x(), self.y(), 100, 100)
         else:
             self.is_expanded = True
             self.collapsed_widget.hide()
@@ -821,7 +835,7 @@ class MainWindow(QWidget):
         todos = self.config.get_todos(self.current_date)
         
         for todo in todos:
-            item_widget = TodoItem(todo, self.current_date, self.config)
+            item_widget = TodoItem(todo, self.current_date, self.config, self)
             list_item = QListWidgetItem(self.todo_list)
             list_item.setSizeHint(item_widget.sizeHint())
             self.todo_list.setItemWidget(list_item, item_widget)
