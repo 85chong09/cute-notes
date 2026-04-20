@@ -508,12 +508,23 @@ class HTMLTestReporter:
             </div>
             
             <div class="email-section">
-                <h3>📧 一键发送测试报告</h3>
-                <div class="email-form">
-                    <input type="email" id="emailInput" placeholder="请输入收件人邮箱地址" />
-                    <button onclick="sendEmail()">发送报告</button>
+                <h3>📧 发送测试报告</h3>
+                <div style="color: white; margin-bottom: 15px; font-size: 0.9em; line-height: 1.6;">
+                    <p style="margin-bottom: 10px;"><strong>使用方法:</strong></p>
+                    <p style="margin-bottom: 5px;">1. 确保已配置 <code style="background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 3px;">tests/email_config.json</code></p>
+                    <p style="margin-bottom: 5px;">2. 运行以下命令发送邮件:</p>
                 </div>
-                <div id="emailStatus" class="email-status"></div>
+                <div style="background: rgba(0,0,0,0.2); padding: 12px 15px; border-radius: 6px; margin-bottom: 15px; text-align: left;">
+                    <code style="color: #fff; font-family: 'Consolas', monospace; font-size: 0.9em;">
+                        python tests/send_email.py [报告路径] [收件人邮箱]
+                    </code>
+                </div>
+                <div style="color: rgba(255,255,255,0.9); font-size: 0.85em; line-height: 1.5;">
+                    <p><strong>示例:</strong></p>
+                    <p style="margin-top: 5px;">• 发送最新报告给默认收件人: <code style="background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 3px;">python tests/send_email.py</code></p>
+                    <p style="margin-top: 5px;">• 发送指定报告: <code style="background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 3px;">python tests/send_email.py reports/test_report_xxx.html</code></p>
+                    <p style="margin-top: 5px;">• 发送给指定收件人: <code style="background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 3px;">python tests/send_email.py reports/test_report_xxx.html user@example.com</code></p>
+                </div>
             </div>
         </div>
         
@@ -627,32 +638,6 @@ class HTMLTestReporter:
                 }}
             }}
         }});
-        
-        // 发送邮件功能
-        function sendEmail() {{
-            const email = document.getElementById('emailInput').value;
-            const statusDiv = document.getElementById('emailStatus');
-            
-            if (!email) {{
-                statusDiv.textContent = '⚠️ 请输入邮箱地址';
-                statusDiv.style.color = '#ffe58f';
-                return;
-            }}
-            
-            if (!email.includes('@')) {{
-                statusDiv.textContent = '⚠️ 请输入有效的邮箱地址';
-                statusDiv.style.color = '#ffe58f';
-                return;
-            }}
-            
-            statusDiv.textContent = '📤 正在发送...';
-            statusDiv.style.color = 'white';
-            
-            setTimeout(() => {{
-                statusDiv.textContent = '✅ 邮件发送功能已就绪，请使用Python脚本发送';
-                statusDiv.style.color = '#d9f7be';
-            }}, 1000);
-        }}
     </script>
 </body>
 </html>'''

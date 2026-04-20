@@ -251,72 +251,10 @@ def run_tests():
     print(f"\n报告已保存至: {report_path}")
     print("=" * 60)
     
-    # 检查是否需要自动发送邮件
-    if email_config.get('auto_send_email', False) and email_config.get('sender_email') and email_config.get('sender_password'):
-        recipient = email_config.get('default_recipient')
-        if recipient:
-            print(f"\n📧 自动发送邮件到: {recipient}")
-            smtp_config = {
-                'server': email_config['smtp_server'],
-                'port': email_config['smtp_port'],
-                'user': email_config['sender_email'],
-                'password': email_config['sender_password'],
-                'from': email_config.get('sender_name', email_config['sender_email'])
-            }
-            send_test_email(report_path, recipient, smtp_config)
-        else:
-            print("\n⚠️  自动发送邮件已启用，但未配置默认收件人")
-    else:
-        # 询问是否发送邮件
-        print("\n" + "=" * 60)
-        print("是否要发送测试报告邮件? (y/n)")
-        print("提示: 可以在 email_config.json 中配置 auto_send_email: true 实现自动发送")
-        user_input = input().strip().lower()
-        
-        if user_input == 'y':
-            # 检查是否已有配置
-            if not email_config.get('sender_email') or not email_config.get('sender_password'):
-                print("\n邮箱配置不完整，请输入邮件配置信息:")
-                print("提示: 可以在 email_config.json 中预先配置，避免每次输入")
-                
-                to_email = input("收件人邮箱: ").strip()
-                if to_email:
-                    smtp_config = {
-                        'server': input("SMTP服务器 (默认: smtp.163.com): ").strip() or 'smtp.163.com',
-                        'port': int(input("SMTP端口 (默认: 587): ").strip() or 587),
-                        'user': input("发件人邮箱: ").strip(),
-                        'password': input("发件人密码/授权码: ").strip(),
-                        'from': input("发件人显示名称 (默认: 测试报告): ").strip() or '测试报告'
-                    }
-                    smtp_config['from'] = smtp_config['user']  # 使用邮箱作为发件人
-                    
-                    if smtp_config['user'] and smtp_config['password']:
-                        send_test_email(report_path, to_email, smtp_config)
-                    else:
-                        print("❌ 缺少必要的邮件配置信息!")
-                else:
-                    print("❌ 未输入收件人邮箱!")
-            else:
-                # 使用配置文件中的信息
-                to_email = email_config.get('default_recipient')
-                if not to_email:
-                    to_email = input("收件人邮箱: ").strip()
-                
-                if to_email:
-                    smtp_config = {
-                        'server': email_config['smtp_server'],
-                        'port': email_config['smtp_port'],
-                        'user': email_config['sender_email'],
-                        'password': email_config['sender_password'],
-                        'from': email_config.get('sender_name', email_config['sender_email'])
-                    }
-                    send_test_email(report_path, to_email, smtp_config)
-                else:
-                    print("❌ 未输入收件人邮箱!")
-        else:
-            print("跳过邮件发送。")
-    
-    print("\n测试完成!")
+    print("\n📋 测试完成!")
+    print(f"\n💡 提示:")
+    print("   - 如需发送邮件，请使用: python tests/send_email.py <报告路径> <收件人邮箱>")
+    print("   - 或配置 email_config.json 中的 auto_send_email: true 实现自动发送")
     return report_path, summary, email_config
 
 
