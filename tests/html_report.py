@@ -152,236 +152,257 @@ class HTMLTestReporter:
         }}
         body {{
             font-family: 'Microsoft YaHei', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f0f2f5;
             min-height: 100vh;
-            padding: 20px;
+            padding: 10px;
         }}
         .container {{
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             overflow: hidden;
         }}
         .header {{
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             color: white;
-            padding: 30px;
+            padding: 20px;
             text-align: center;
         }}
         .header h1 {{
-            font-size: 2.5em;
-            margin-bottom: 10px;
+            font-size: 1.8em;
+            margin-bottom: 5px;
         }}
         .header .subtitle {{
             color: #a0a0a0;
-            font-size: 1.1em;
+            font-size: 0.9em;
         }}
         .summary-section {{
-            padding: 30px;
-            background: #f8f9fa;
+            padding: 20px;
+            background: #fafbfc;
         }}
         .summary-cards {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
         }}
         .card {{
             background: white;
-            border-radius: 15px;
-            padding: 25px;
+            border-radius: 6px;
+            padding: 15px;
             text-align: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease;
-        }}
-        .card:hover {{
-            transform: translateY(-5px);
+            border: 1px solid #e8e8e8;
         }}
         .card .value {{
-            font-size: 2.5em;
+            font-size: 1.8em;
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }}
         .card .label {{
             color: #666;
-            font-size: 0.9em;
+            font-size: 0.85em;
         }}
         .card.total .value {{ color: #333; }}
-        .card.passed .value {{ color: #28a745; }}
-        .card.failed .value {{ color: #dc3545; }}
-        .card.error .value {{ color: #ffc107; }}
-        .card.duration .value {{ color: #17a2b8; }}
-        .card.rate .value {{ color: #6f42c1; }}
+        .card.passed .value {{ color: #52c41a; }}
+        .card.failed .value {{ color: #ff4d4f; }}
+        .card.error .value {{ color: #faad14; }}
+        .card.duration .value {{ color: #1890ff; }}
+        .card.rate .value {{ color: #722ed1; }}
         
         .charts-section {{
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
+            gap: 15px;
+            margin-bottom: 20px;
         }}
         .chart-container {{
             background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-radius: 6px;
+            padding: 15px;
+            border: 1px solid #e8e8e8;
         }}
         .chart-container h3 {{
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             color: #333;
-            font-size: 1.3em;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 10px;
+            font-size: 1em;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 8px;
+        }}
+        .chart-wrapper {{
+            position: relative;
+            height: 180px;
+            width: 100%;
         }}
         
         .module-stats-section {{
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }}
         .module-stats-section h3 {{
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             color: #333;
-            font-size: 1.3em;
+            font-size: 1em;
         }}
         .module-table {{
             width: 100%;
             border-collapse: collapse;
             background: white;
-            border-radius: 15px;
+            border-radius: 6px;
             overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border: 1px solid #e8e8e8;
         }}
         .module-table th, .module-table td {{
-            padding: 15px;
+            padding: 10px 8px;
             text-align: center;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.85em;
         }}
         .module-table th {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            font-weight: bold;
+            background: #fafafa;
+            color: #333;
+            font-weight: 600;
         }}
-        .module-table tr:hover {{
-            background: #f8f9fa;
+        .module-table tr:last-child td {{
+            border-bottom: none;
         }}
         .progress-bar {{
             width: 100%;
-            height: 20px;
-            background: #e9ecef;
-            border-radius: 10px;
+            height: 12px;
+            background: #f0f0f0;
+            border-radius: 6px;
             overflow: hidden;
         }}
         .progress-bar .fill {{
             height: 100%;
-            background: linear-gradient(90deg, #28a745, #34ce57);
-            transition: width 0.5s ease;
+            background: #52c41a;
         }}
         
         .test-cases-section {{
-            margin-top: 30px;
+            margin-top: 20px;
         }}
         .test-cases-section h3 {{
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             color: #333;
-            font-size: 1.3em;
+            font-size: 1em;
+        }}
+        .table-container {{
+            overflow-x: auto;
+            border-radius: 6px;
+            border: 1px solid #e8e8e8;
         }}
         .test-cases-table {{
             width: 100%;
             border-collapse: collapse;
             background: white;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            table-layout: fixed;
         }}
         .test-cases-table th, .test-cases-table td {{
-            padding: 15px;
+            padding: 10px 8px;
             text-align: left;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.85em;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }}
         .test-cases-table th {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            font-weight: bold;
+            background: #fafafa;
+            color: #333;
+            font-weight: 600;
             position: sticky;
             top: 0;
+            z-index: 10;
         }}
-        .test-cases-table tr:hover {{
-            background: #f8f9fa;
+        .test-cases-table tr:last-child td {{
+            border-bottom: none;
         }}
+        .test-cases-table th:nth-child(1) {{ width: 50px; }}
+        .test-cases-table th:nth-child(2) {{ width: 120px; }}
+        .test-cases-table th:nth-child(3) {{ width: 180px; }}
+        .test-cases-table th:nth-child(4) {{ width: 150px; }}
+        .test-cases-table th:nth-child(5) {{ width: 100px; }}
+        .test-cases-table th:nth-child(6) {{ width: 100px; }}
+        .test-cases-table th:nth-child(7) {{ width: 70px; }}
+        .test-cases-table th:nth-child(8) {{ width: 70px; }}
+        
         .status-badge {{
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            font-weight: bold;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+            display: inline-block;
         }}
-        .status-pass {{ background: #d4edda; color: #155724; }}
-        .status-fail {{ background: #f8d7da; color: #721c24; }}
-        .status-error {{ background: #fff3cd; color: #856404; }}
-        .status-skipped {{ background: #e2e3e5; color: #383d41; }}
+        .status-pass {{ background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }}
+        .status-fail {{ background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }}
+        .status-error {{ background: #fffbe6; color: #faad14; border: 1px solid #ffe58f; }}
+        .status-skipped {{ background: #fafafa; color: #8c8c8c; border: 1px solid #d9d9d9; }}
         
         .error-details {{
-            background: #fff5f5;
-            border-left: 4px solid #dc3545;
-            padding: 10px 15px;
+            background: #fff2f0;
+            border-left: 3px solid #ff4d4f;
+            padding: 8px 12px;
             margin-top: 5px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
             white-space: pre-wrap;
             word-break: break-all;
+            line-height: 1.4;
+            max-height: 200px;
+            overflow-y: auto;
         }}
         
         .email-section {{
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-            padding: 30px;
+            background: linear-gradient(135deg, #ff7875 0%, #ff4d4f 100%);
+            padding: 20px;
             text-align: center;
-            border-radius: 15px;
-            margin-top: 30px;
+            border-radius: 6px;
+            margin-top: 20px;
         }}
         .email-section h3 {{
             color: white;
-            margin-bottom: 20px;
-            font-size: 1.5em;
+            margin-bottom: 12px;
+            font-size: 1.1em;
         }}
         .email-form {{
             display: flex;
-            gap: 15px;
+            gap: 10px;
             justify-content: center;
             flex-wrap: wrap;
+            align-items: center;
         }}
         .email-form input {{
-            padding: 12px 20px;
+            padding: 8px 15px;
             border: none;
-            border-radius: 25px;
-            font-size: 1em;
-            min-width: 250px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            min-width: 200px;
             outline: none;
         }}
         .email-form button {{
-            padding: 12px 30px;
+            padding: 8px 20px;
             background: white;
-            color: #ee5a24;
+            color: #ff4d4f;
             border: none;
-            border-radius: 25px;
-            font-size: 1em;
-            font-weight: bold;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
         }}
         .email-form button:hover {{
-            background: #f8f9fa;
-            transform: scale(1.05);
+            background: #fafafa;
         }}
         .email-status {{
-            margin-top: 15px;
+            margin-top: 10px;
             color: white;
-            font-size: 1em;
+            font-size: 0.9em;
         }}
         
         .footer {{
             text-align: center;
-            padding: 20px;
-            color: #666;
-            font-size: 0.9em;
+            padding: 15px;
+            color: #8c8c8c;
+            font-size: 0.85em;
         }}
         
         @media (max-width: 768px) {{
@@ -432,11 +453,15 @@ class HTMLTestReporter:
             <div class="charts-section">
                 <div class="chart-container">
                     <h3>📈 测试结果分布</h3>
-                    <canvas id="statusChart" height="250"></canvas>
+                    <div class="chart-wrapper">
+                        <canvas id="statusChart"></canvas>
+                    </div>
                 </div>
                 <div class="chart-container">
                     <h3>📊 模块测试统计</h3>
-                    <canvas id="moduleChart" height="250"></canvas>
+                    <div class="chart-wrapper">
+                        <canvas id="moduleChart"></canvas>
+                    </div>
                 </div>
             </div>
             
@@ -461,7 +486,7 @@ class HTMLTestReporter:
             
             <div class="test-cases-section">
                 <h3>📋 测试用例详情</h3>
-                <div style="max-height: 600px; overflow-y: auto;">
+                <div class="table-container">
                     <table class="test-cases-table">
                         <thead>
                             <tr>
@@ -507,8 +532,9 @@ class HTMLTestReporter:
                 labels: ['通过', '失败', '错误', '跳过'],
                 datasets: [{{
                     data: [statusData.passed, statusData.failed, statusData.error, statusData.skipped],
-                    backgroundColor: ['#28a745', '#dc3545', '#ffc107', '#6c757d'],
-                    borderWidth: 0
+                    backgroundColor: ['#52c41a', '#ff4d4f', '#faad14', '#8c8c8c'],
+                    borderWidth: 1,
+                    borderColor: '#fff'
                 }}]
             }},
             options: {{
@@ -516,15 +542,18 @@ class HTMLTestReporter:
                 maintainAspectRatio: false,
                 plugins: {{
                     legend: {{
-                        position: 'bottom',
+                        position: 'right',
                         labels: {{
-                            padding: 20,
+                            padding: 10,
                             font: {{
-                                size: 12
-                            }}
+                                size: 11
+                            }},
+                            boxWidth: 12,
+                            boxHeight: 12
                         }}
                     }}
-                }}
+                }},
+                cutout: '60%'
             }}
         }});
         
@@ -532,7 +561,6 @@ class HTMLTestReporter:
         const moduleCtx = document.getElementById('moduleChart').getContext('2d');
         const moduleStats = {module_stats_json};
         const moduleLabels = Object.keys(moduleStats);
-        const moduleTotals = moduleLabels.map(m => moduleStats[m].total);
         const modulePassed = moduleLabels.map(m => moduleStats[m].passed);
         const moduleFailed = moduleLabels.map(m => moduleStats[m].failed);
         
@@ -544,14 +572,14 @@ class HTMLTestReporter:
                     {{
                         label: '通过',
                         data: modulePassed,
-                        backgroundColor: '#28a745',
-                        borderRadius: 5
+                        backgroundColor: '#52c41a',
+                        borderRadius: 3
                     }},
                     {{
                         label: '失败',
                         data: moduleFailed,
-                        backgroundColor: '#dc3545',
-                        borderRadius: 5
+                        backgroundColor: '#ff4d4f',
+                        borderRadius: 3
                     }}
                 ]
             }},
@@ -560,16 +588,41 @@ class HTMLTestReporter:
                 maintainAspectRatio: false,
                 scales: {{
                     x: {{
-                        stacked: true
+                        stacked: true,
+                        ticks: {{
+                            font: {{
+                                size: 10
+                            }}
+                        }},
+                        grid: {{
+                            display: false
+                        }}
                     }},
                     y: {{
                         stacked: true,
-                        beginAtZero: true
+                        beginAtZero: true,
+                        ticks: {{
+                            stepSize: 5,
+                            font: {{
+                                size: 10
+                            }}
+                        }},
+                        grid: {{
+                            color: '#f0f0f0'
+                        }}
                     }}
                 }},
                 plugins: {{
                     legend: {{
-                        position: 'bottom'
+                        position: 'top',
+                        labels: {{
+                            padding: 10,
+                            font: {{
+                                size: 11
+                            }},
+                            boxWidth: 12,
+                            boxHeight: 12
+                        }}
                     }}
                 }}
             }}
@@ -582,25 +635,22 @@ class HTMLTestReporter:
             
             if (!email) {{
                 statusDiv.textContent = '⚠️ 请输入邮箱地址';
-                statusDiv.style.color = '#ffc107';
+                statusDiv.style.color = '#ffe58f';
                 return;
             }}
             
             if (!email.includes('@')) {{
                 statusDiv.textContent = '⚠️ 请输入有效的邮箱地址';
-                statusDiv.style.color = '#ffc107';
+                statusDiv.style.color = '#ffe58f';
                 return;
             }}
             
             statusDiv.textContent = '📤 正在发送...';
             statusDiv.style.color = 'white';
             
-            // 这里调用后端发送邮件
-            // 由于HTML报告是静态的，实际发送需要后端支持
-            // 这里显示提示信息
             setTimeout(() => {{
                 statusDiv.textContent = '✅ 邮件发送功能已就绪，请使用Python脚本发送';
-                statusDiv.style.color = '#d4edda';
+                statusDiv.style.color = '#d9f7be';
             }}, 1000);
         }}
     </script>
@@ -617,21 +667,21 @@ class HTMLTestReporter:
                 <tr>
                     <td><strong>{module}</strong></td>
                     <td>{stats['total']}</td>
-                    <td style="color: #28a745; font-weight: bold;">{stats['passed']}</td>
-                    <td style="color: #dc3545; font-weight: bold;">{stats['failed']}</td>
-                    <td style="color: #ffc107; font-weight: bold;">{stats['error']}</td>
+                    <td style="color: #52c41a; font-weight: 600;">{stats['passed']}</td>
+                    <td style="color: #ff4d4f; font-weight: 600;">{stats['failed']}</td>
+                    <td style="color: #faad14; font-weight: 600;">{stats['error']}</td>
                     <td>
                         <div class="progress-bar">
                             <div class="fill" style="width: {pass_rate}%;"></div>
                         </div>
-                        <span style="margin-top: 5px; display: block; font-weight: bold;">{pass_rate}%</span>
+                        <span style="margin-top: 3px; display: block; font-weight: 600; font-size: 0.85em;">{pass_rate}%</span>
                     </td>
                 </tr>'''
         return rows
 
     def _generate_test_cases_table(self, test_cases):
         if not test_cases:
-            return '<tr><td colspan="8" style="text-align: center; padding: 30px;">暂无测试用例数据</td></tr>'
+            return '<tr><td colspan="8" style="text-align: center; padding: 20px;">暂无测试用例数据</td></tr>'
         
         rows = ''
         for idx, tc in enumerate(test_cases, 1):
@@ -691,12 +741,12 @@ class HTMLTestReporter:
             <head>
                 <style>
                     body {{ font-family: 'Microsoft YaHei', Arial, sans-serif; }}
-                    .summary {{ margin-bottom: 20px; }}
-                    .item {{ margin: 10px 0; }}
+                    .summary {{ margin-bottom: 15px; }}
+                    .item {{ margin: 8px 0; }}
                     .label {{ font-weight: bold; color: #666; }}
-                    .value {{ font-size: 1.2em; }}
-                    .passed {{ color: #28a745; }}
-                    .failed {{ color: #dc3545; }}
+                    .value {{ font-size: 1.1em; }}
+                    .passed {{ color: #52c41a; }}
+                    .failed {{ color: #ff4d4f; }}
                 </style>
             </head>
             <body>
