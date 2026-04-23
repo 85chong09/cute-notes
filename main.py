@@ -432,6 +432,7 @@ class TodoItem(QWidget):
             circle_size = 16
             delete_btn_size = 20
             clock_btn_size = 24
+            is_completed = self.todo.get('completed', False)
             
             circle_rect = QRect(padding, (self.height() - circle_size) // 2, circle_size, circle_size)
             if circle_rect.contains(event.pos()):
@@ -442,7 +443,8 @@ class TodoItem(QWidget):
                 clock_btn_x = self.width() - padding - delete_btn_size - 5 - clock_btn_size
                 clock_btn_rect = QRect(clock_btn_x, (self.height() - clock_btn_size) // 2, clock_btn_size, clock_btn_size)
                 if clock_btn_rect.contains(event.pos()):
-                    self.show_deadline_dialog()
+                    if not is_completed:
+                        self.show_deadline_dialog()
                     event.accept()
                     return
                 else:
