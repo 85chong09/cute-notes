@@ -153,6 +153,69 @@ class TodoItem(QWidget):
                 if delete_btn_rect.contains(event.pos()):
                     self.main_window.delete_todo(self.todo['id'])
 
+class SearchResultItem(QWidget):
+    def __init__(self, date_str, todo_text, main_window, parent=None):
+        super().__init__(parent)
+        self.date_str = date_str
+        self.todo_text = todo_text
+        self.main_window = main_window
+        self.setMinimumHeight(60)
+        self.setMaximumHeight(100)
+        self.setStyleSheet(self.get_style())
+        self.setCursor(Qt.PointingHandCursor)
+    
+    def get_style(self):
+        theme = self.main_window.config.config.get('theme', 'light')
+        if theme == 'light':
+            bg_color = '#fff8f0'
+            hover_color = '#fff5e6'
+        else:
+            bg_color = '#3a3a4a'
+            hover_color = '#454555'
+        
+        return f'''
+            SearchResultItem {{
+                background-color: {bg_color};
+                border-radius: 12px;
+                border: 1px solid rgba(200, 180, 160, 0.3);
+            }}
+            SearchResultItem:hover {{
+                background-color: {hover_color};
+            }}
+        '''
+    
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        theme = self.main_window.config.config.get('theme', 'light')
+        if theme == 'light':
+            date_color = QColor(255, 152, 0)
+            text_color = QColor(90, 74, 58)
+        else:
+            date_color = QColor(255, 180, 100)
+            text_color = QColor(224, 224, 224)
+        
+        padding = 15
+        
+        date_font = QFont('Microsoft YaHei', 10, QFont.Bold)
+        painter.setFont(date_font)
+        painter.setPen(QPen(date_color))
+        date_text = f'📅 {self.date_str}'
+        date_rect = QRect(padding, padding, self.width() - padding * 2, 20)
+        painter.drawText(date_rect, Qt.AlignLeft, date_text)
+        
+        text_font = QFont('Microsoft YaHei', 12)
+        painter.setFont(text_font)
+        painter.setPen(QPen(text_color))
+        text_rect = QRect(padding, padding + 25, self.width() - padding * 2, self.height() - padding - 30)
+        painter.drawText(text_rect, Qt.AlignLeft | Qt.TextWordWrap, self.todo_text)
+    
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.main_window.go_to_date(self.date_str)
+
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
@@ -836,6 +899,11 @@ class MainWindow(QWidget):
         self.current_date = qdate.toString('yyyy-MM-dd')
         self.show_todo_list()
     
+    def go_to_date(self, date_str):
+        self.current_date = date_str
+        self.search_input.clear()
+        self.show_todo_list()
+    
     def refresh_todos(self):
         self.todo_list.clear()
         todos = self.config.get_todos(self.current_date)
@@ -882,44 +950,20 @@ class MainWindow(QWidget):
             self.refresh_todos()
             return
         
+        if self.calendar_widget.isVisible():
+            self.todo_list_widget.show()
+            self.calendar_widget.hide()
+        
         results = self.config.search_todos(keyword)
         self.todo_list.clear()
         
         if results:
             for result in results:
-                result_widget = QWidget()
-                result_layout = QVBoxLayout(result_widget)
-                result_layout.setContentsMargins(10, 10, 10, 10)
-                
-                date_label = QLabel(f'📅 {result["date"]}')
-                date_label.setStyleSheet('''
-                    QLabel {
-                        color: #ff9800;
-                        font-size: 11px;
-                        font-weight: bold;
-                    }
-                ''')
-                result_layout.addWidget(date_label)
-                
-                todo_label = QLabel(result['todo']['text'])
-                todo_label.setStyleSheet('''
-                    QLabel {
-                        color: #5a4a3a;
-                        font-size: 13px;
-                    }
-                ''')
-                todo_label.setWordWrap(True)
-                result_layout.addWidget(todo_label)
-                
-                result_widget.setStyleSheet('''
-                    QWidget {
-                        background-color: rgba(255, 248, 240, 0.9);
-                        border-radius: 12px;
-                        border: 1px solid rgba(200, 180, 160, 0.3);
-                    }
-                ''')
-                
-                result_widget.date = result['date']
+                result_widget = SearchResultItem(
+                    result['date'],
+                    result['todo']['text'],
+                    self
+                )
                 
                 list_item = QListWidgetItem(self.todo_list)
                 list_item.setSizeHint(result_widget.sizeHint())
