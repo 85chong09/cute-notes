@@ -56,8 +56,8 @@ class TodoItem(QWidget):
         self.config = config
         self.main_window = main_window
         self.is_expanded = True
-        self.setMinimumHeight(65)
-        self.setMaximumHeight(120)
+        self.setMinimumHeight(85)
+        self.setMaximumHeight(150)
         self.setStyleSheet(self.get_style())
     
     def get_style(self):
@@ -130,7 +130,7 @@ class TodoItem(QWidget):
         delete_btn_size = 20
         text_left = padding + circle_size + 10
         text_right = self.width() - padding - delete_btn_size - 10
-        vertical_padding = 12
+        vertical_padding = 20
         text_rect = QRect(text_left, vertical_padding, text_right - text_left, self.height() - vertical_padding * 2)
         painter.drawText(text_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.todo['text'])
         
@@ -600,6 +600,7 @@ class MainWindow(QWidget):
         is_locked = self.config.config.get('is_locked', False)
         
         if is_locked:
+            self.is_expanded = False
             self.expanded_widget.hide()
             self.collapsed_widget.hide()
             self.locked_widget.show()
@@ -768,11 +769,6 @@ class MainWindow(QWidget):
             
             painter.setPen(QPen(accent_color, 2))
             painter.drawPath(path)
-            
-            if theme == 'light':
-                painter.setPen(QPen(QColor(255, 220, 200), 1))
-                for i in range(50, self.height(), 25):
-                    painter.drawLine(20, i, self.width() - 20, i)
         else:
             pass
     
