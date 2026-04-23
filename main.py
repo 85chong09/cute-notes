@@ -274,6 +274,10 @@ class TodoItem(QWidget):
         self.setMinimumHeight(100)
         self.setMaximumHeight(160)
         self.setStyleSheet(self.get_style())
+        self.setAttribute(Qt.WA_StyledBackground, True)
+    
+    def sizeHint(self):
+        return QSize(400, 100)
     
     def get_style(self):
         theme = self.config.config.get('theme', 'light')
@@ -432,15 +436,23 @@ class TodoItem(QWidget):
             circle_rect = QRect(padding, (self.height() - circle_size) // 2, circle_size, circle_size)
             if circle_rect.contains(event.pos()):
                 self.toggle_completed()
+                event.accept()
+                return
             else:
                 clock_btn_x = self.width() - padding - delete_btn_size - 5 - clock_btn_size
                 clock_btn_rect = QRect(clock_btn_x, (self.height() - clock_btn_size) // 2, clock_btn_size, clock_btn_size)
                 if clock_btn_rect.contains(event.pos()):
                     self.show_deadline_dialog()
+                    event.accept()
+                    return
                 else:
                     delete_btn_rect = QRect(self.width() - padding - delete_btn_size, (self.height() - delete_btn_size) // 2, delete_btn_size, delete_btn_size)
                     if delete_btn_rect.contains(event.pos()):
                         self.main_window.delete_todo(self.todo['id'])
+                        event.accept()
+                        return
+        
+        super().mousePressEvent(event)
 
 class SearchResultItem(QWidget):
     def __init__(self, date_str, todo_text, main_window, parent=None):
@@ -1257,30 +1269,6 @@ class MainWindow(QWidget):
         self.current_date = date_str
         self.search_input.clear()
         self.show_todo_list()
-    
-    def refresh_todos(self):
-        self.todo_list.clear()
-        todos = self.config.get_todos(self.current_date)
-        
-        for todo in todos:
-            item_widget = TodoItem(todo, self.current_date, self.config, self)
-            list_item = QListWidgetItem(self.todo_list)
-            list_item.setSizeHint(item_widget.sizeHint())
-            self.todo_list.setItemWidget(list_item, item_widget)
-        
-        if not todos:
-            empty_label = QLabel('✨ 今天还没有待办事项哦~')
-            empty_label.setAlignment(Qt.AlignCenter)
-            empty_label.setStyleSheet('''
-                QLabel {
-                    color: #9e9e9e;
-                    font-size: 14px;
-                    padding: 20px;
-                }
-            ''')
-            list_item = QListWidgetItem(self.todo_list)
-            list_item.setSizeHint(empty_label.sizeHint())
-            self.todo_list.setItemWidget(list_item, empty_label)
     
     def add_new_todo(self):
         text = self.new_todo_input.text().strip()
