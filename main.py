@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (
     QMessageBox, QScrollArea, QFrame, QSplitter,
     QMenu, QTimeEdit, QDateEdit, QDateTimeEdit, QSpinBox
 )
-from PyQt5.QtCore import Qt, QPoint, QDate, QPropertyAnimation, QRect, QSize, pyqtProperty, QTimer, QTime
+from PyQt5.QtCore import Qt, QPoint, QDate, QPropertyAnimation, QRect, QSize, pyqtProperty, QTimer, QTime, QDateTime
 from PyQt5.QtGui import (
     QPainter, QColor, QPen, QBrush, QFont, 
     QLinearGradient, QRadialGradient, QPainterPath,
@@ -69,20 +69,22 @@ class DeadlinePickerDialog(QDialog):
         
         # 设置最小时间为当前时间
         current_time = datetime.now()
-        self.datetime_edit.setMinimumDateTime(current_time)
+        q_current_time = QDateTime(current_time)
+        self.datetime_edit.setMinimumDateTime(q_current_time)
         
         # 如果有当前截止时间，设置为默认值
         if self.current_deadline:
             try:
                 deadline = datetime.fromisoformat(self.current_deadline)
+                q_deadline = QDateTime(deadline)
                 if deadline > current_time:
-                    self.datetime_edit.setDateTime(deadline)
+                    self.datetime_edit.setDateTime(q_deadline)
                 else:
-                    self.datetime_edit.setDateTime(current_time + timedelta(hours=1))
+                    self.datetime_edit.setDateTime(QDateTime(current_time + timedelta(hours=1)))
             except (ValueError, TypeError):
-                self.datetime_edit.setDateTime(current_time + timedelta(hours=1))
+                self.datetime_edit.setDateTime(QDateTime(current_time + timedelta(hours=1)))
         else:
-            self.datetime_edit.setDateTime(current_time + timedelta(hours=1))
+            self.datetime_edit.setDateTime(QDateTime(current_time + timedelta(hours=1)))
         
         layout.addWidget(self.datetime_edit)
         
@@ -177,7 +179,7 @@ class DeadlinePickerDialog(QDialog):
     def set_quick_time(self, hours):
         """设置快捷时间"""
         new_time = datetime.now() + timedelta(hours=hours)
-        self.datetime_edit.setDateTime(new_time)
+        self.datetime_edit.setDateTime(QDateTime(new_time))
     
     def clear_deadline(self):
         """清除截止时间"""
