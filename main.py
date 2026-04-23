@@ -159,10 +159,36 @@ class SearchResultItem(QWidget):
         self.date_str = date_str
         self.todo_text = todo_text
         self.main_window = main_window
-        self.setMinimumHeight(60)
-        self.setMaximumHeight(100)
-        self.setStyleSheet(self.get_style())
         self.setCursor(Qt.PointingHandCursor)
+        
+        self._apply_theme()
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(15, 12, 15, 12)
+        layout.setSpacing(8)
+        
+        theme = self.main_window.config.config.get('theme', 'light')
+        if theme == 'light':
+            date_color = '#ff9800'
+            text_color = '#5a4a3a'
+        else:
+            date_color = '#ffb464'
+            text_color = '#e0e0e0'
+        
+        self.date_label = QLabel(f'📅 {date_str}')
+        self.date_label.setFont(QFont('Microsoft YaHei', 10, QFont.Bold))
+        self.date_label.setStyleSheet(f'color: {date_color};')
+        layout.addWidget(self.date_label)
+        
+        self.todo_label = QLabel(todo_text)
+        self.todo_label.setFont(QFont('Microsoft YaHei', 12))
+        self.todo_label.setStyleSheet(f'color: {text_color};')
+        self.todo_label.setWordWrap(True)
+        self.todo_label.setMinimumHeight(20)
+        layout.addWidget(self.todo_label)
+        
+        self.setMinimumHeight(70)
+        self.adjustSize()
     
     def get_style(self):
         theme = self.main_window.config.config.get('theme', 'light')
@@ -184,33 +210,26 @@ class SearchResultItem(QWidget):
             }}
         '''
     
-    def paintEvent(self, event):
-        super().paintEvent(event)
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        
+    def _apply_theme(self):
         theme = self.main_window.config.config.get('theme', 'light')
         if theme == 'light':
-            date_color = QColor(255, 152, 0)
-            text_color = QColor(90, 74, 58)
+            bg_color = '#fff8f0'
+            hover_color = '#fff5e6'
         else:
-            date_color = QColor(255, 180, 100)
-            text_color = QColor(224, 224, 224)
+            bg_color = '#3a3a4a'
+            hover_color = '#454555'
         
-        padding = 15
-        
-        date_font = QFont('Microsoft YaHei', 10, QFont.Bold)
-        painter.setFont(date_font)
-        painter.setPen(QPen(date_color))
-        date_text = f'📅 {self.date_str}'
-        date_rect = QRect(padding, padding, self.width() - padding * 2, 20)
-        painter.drawText(date_rect, Qt.AlignLeft, date_text)
-        
-        text_font = QFont('Microsoft YaHei', 12)
-        painter.setFont(text_font)
-        painter.setPen(QPen(text_color))
-        text_rect = QRect(padding, padding + 25, self.width() - padding * 2, self.height() - padding - 30)
-        painter.drawText(text_rect, Qt.AlignLeft | Qt.TextWordWrap, self.todo_text)
+        self.setStyleSheet(f'''
+            SearchResultItem {{
+                background-color: {bg_color};
+                border-radius: 12px;
+                border: 1px solid rgba(200, 180, 160, 0.3);
+                padding: 10px;
+            }}
+            SearchResultItem:hover {{
+                background-color: {hover_color};
+            }}
+        ''')
     
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
