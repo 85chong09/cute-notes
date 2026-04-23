@@ -1,0 +1,9 @@
+{
+    "smtp_server": "smtp.163.com",
+    "smtp_port": 587,
+    "sender_email": "ivory0710@163.com",
+    "sender_password": "你的授权码或密码",
+    "sender_name": "测试报告",
+    "default_recipient": "ivory0710@163.com",
+    "auto_send_email": false
+}
