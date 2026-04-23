@@ -374,8 +374,8 @@ class TodoItem(QWidget):
             
             painter.drawEllipse(QPoint(center_x, center_y), radius, radius)
             
-            hour_length = radius * 0.5
-            minute_length = radius * 0.7
+            hour_length = int(radius * 0.5)
+            minute_length = int(radius * 0.7)
             
             if has_deadline:
                 try:
@@ -387,13 +387,13 @@ class TodoItem(QWidget):
                     hour_rad = math.radians(hour_angle - 90)
                     minute_rad = math.radians(minute_angle - 90)
                     
-                    hour_end_x = center_x + hour_length * math.cos(hour_rad)
-                    hour_end_y = center_y + hour_length * math.sin(hour_rad)
-                    painter.drawLine(center_x, center_y, int(hour_end_x), int(hour_end_y))
+                    hour_end_x = int(center_x + hour_length * math.cos(hour_rad))
+                    hour_end_y = int(center_y + hour_length * math.sin(hour_rad))
+                    painter.drawLine(center_x, center_y, hour_end_x, hour_end_y)
                     
-                    minute_end_x = center_x + minute_length * math.cos(minute_rad)
-                    minute_end_y = center_y + minute_length * math.sin(minute_rad)
-                    painter.drawLine(center_x, center_y, int(minute_end_x), int(minute_end_y))
+                    minute_end_x = int(center_x + minute_length * math.cos(minute_rad))
+                    minute_end_y = int(center_y + minute_length * math.sin(minute_rad))
+                    painter.drawLine(center_x, center_y, minute_end_x, minute_end_y)
                 except (ValueError, TypeError):
                     painter.drawLine(center_x, center_y, center_x, center_y - hour_length)
                     painter.drawLine(center_x, center_y, center_x + minute_length, center_y)
