@@ -15,6 +15,39 @@ from PyQt5.QtGui import (
 from datetime import datetime
 from config import ConfigManager
 
+class LockIconWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(100, 100)
+    
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        bg_color = QColor(100, 100, 120, 230)
+        border_color = QColor(80, 80, 100, 200)
+        
+        circle_rect = QRect(3, 3, 94, 94)
+        
+        painter.setBrush(QBrush(bg_color))
+        painter.setPen(QPen(border_color, 3))
+        painter.drawEllipse(circle_rect)
+        
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(QColor(255, 200, 100)))
+        
+        lock_body_rect = QRect(35, 55, 30, 28)
+        painter.drawRoundedRect(lock_body_rect, 4, 4)
+        
+        painter.setBrush(Qt.NoBrush)
+        painter.setPen(QPen(QColor(80, 80, 100), 6))
+        painter.drawArc(QRect(38, 28, 24, 30), 180 * 16, 180 * 16)
+        
+        painter.setBrush(QBrush(QColor(80, 80, 100)))
+        painter.setPen(Qt.NoPen)
+        painter.drawEllipse(QRect(47, 65, 6, 6))
+        painter.drawRect(QRect(49, 72, 2, 5))
+
 class CustomCalendarWidget(QCalendarWidget):
     def __init__(self, config, parent=None):
         super().__init__(parent)
@@ -56,8 +89,8 @@ class TodoItem(QWidget):
         self.config = config
         self.main_window = main_window
         self.is_expanded = True
-        self.setMinimumHeight(85)
-        self.setMaximumHeight(150)
+        self.setMinimumHeight(100)
+        self.setMaximumHeight(160)
         self.setStyleSheet(self.get_style())
     
     def get_style(self):
@@ -130,7 +163,7 @@ class TodoItem(QWidget):
         delete_btn_size = 20
         text_left = padding + circle_size + 10
         text_right = self.width() - padding - delete_btn_size - 10
-        vertical_padding = 20
+        vertical_padding = 28
         text_rect = QRect(text_left, vertical_padding, text_right - text_left, self.height() - vertical_padding * 2)
         painter.drawText(text_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.todo['text'])
         
@@ -576,19 +609,8 @@ class MainWindow(QWidget):
         locked_layout.setContentsMargins(0, 0, 0, 0)
         locked_layout.setAlignment(Qt.AlignCenter)
         
-        self.lock_label = QLabel('🔒')
-        self.lock_label.setFixedSize(94, 94)
-        self.lock_label.setAlignment(Qt.AlignCenter)
-        self.lock_label.setStyleSheet('''
-            QLabel {
-                font-size: 40px;
-                background-color: rgba(100, 100, 120, 0.9);
-                border-radius: 47px;
-                border: 3px solid rgba(80, 80, 100, 0.8);
-                padding: 0px;
-                margin: 0px;
-            }
-        ''')
+        self.lock_label = LockIconWidget()
+        self.lock_label.setFixedSize(100, 100)
         self.lock_label.mousePressEvent = self.locked_clicked
         self.lock_label.mouseMoveEvent = self.locked_moved
         self.lock_label.mouseReleaseEvent = self.locked_released
@@ -769,6 +791,11 @@ class MainWindow(QWidget):
             
             painter.setPen(QPen(accent_color, 2))
             painter.drawPath(path)
+            
+            if theme == 'light':
+                painter.setPen(QPen(QColor(255, 220, 200), 1))
+                for i in range(50, self.height(), 25):
+                    painter.drawLine(20, i, self.width() - 20, i)
         else:
             pass
     
