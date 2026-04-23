@@ -4,7 +4,7 @@ import json
 import tempfile
 import unittest
 from unittest.mock import patch, mock_open, MagicMock
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -499,6 +499,220 @@ class TestConfigManager(unittest.TestCase):
         
         # 验证文本未改变
         self.assertEqual(self.config_manager.data['2024-01-01'][0]['text'], '原始文本')
+    
+    # ==================== 截止时间功能测试 ====================
+    
+    def test_add_todo_with_deadline(self):
+        """测试添加带截止时间的待办事项"""
+        deadline = (datetime.now() + timedelta(hours=2)).isoformat()
+        todo = self.config_manager.add_todo('2024-01-01', '测试带截止时间', deadline=deadline)
+        
+        self.assertEqual(todo['deadline'], deadline)
+        self.assertEqual(self.config_manager.data['2024-01-01'][0]['deadline'], deadline)
+    
+    def test_add_todo_without_deadline(self):
+        """测试添加不带截止时间的待办事项"""
+        todo = self.config_manager.add_todo('2024-01-01', '测试不带截止时间')
+        
+        self.assertIsNone(todo['deadline'])
+        self.assertIsNone(self.config_manager.data['2024-01-01'][0]['deadline'])
+    
+    def test_update_todo_deadline(self):
+        """测试更新待办事项的截止时间"""
+        todo = self.config_manager.add_todo('2024-01-01', '测试更新截止时间')
+        self.assertIsNone(todo['deadline'])
+        
+        new_deadline = (datetime.now() + timedelta(hours=5)).isoformat()
+        result = self.config_manager.update_todo('2024-01-01', todo['id'], deadline=new_deadline)
+        
+        self.assertTrue(result)
+        self.assertEqual(self.config_manager.data['2024-01-01'][0]['deadline'], new_deadline)
+    
+    def test_is_task_urgent_within_3_hours(self):
+        """测试检查3小时内的任务是否为紧急"""
+        deadline = (datetime.now() + timedelta(hours=2)).isoformat()
+        todo = {
+            'id': 1,
+            'text': '紧急任务',
+            'completed': False,
+            'deadline': deadline
+        }
+        
+        result = self.config_manager.is_task_urgent(todo)
+        self.assertTrue(result)
+    
+    def test_is_task_urgent_more_than_3_hours(self):
+        """测试检查超过3小时的任务是否为紧急"""
+        deadline = (datetime.now() + timedelta(hours=5)).isoformat()
+        todo = {
+            'id': 1,
+            'text': '非紧急任务',
+            'completed': False,
+            'deadline': deadline
+        }
+        
+        result = self.config_manager.is_task_urgent(todo)
+        self.assertFalse(result)
+    
+    def test_is_task_urgent_completed(self):
+        """测试已完成的任务即使在3小时内也不紧急"""
+        deadline = (datetime.now() + timedelta(hours=1)).isoformat()
+        todo = {
+            'id': 1,
+            'text': '已完成任务',
+            'completed': True,
+            'deadline': deadline
+        }
+        
+        result = self.config_manager.is_task_urgent(todo)
+        self.assertFalse(result)
+    
+    def test_is_task_urgent_no_deadline(self):
+        """测试没有截止时间的任务不紧急"""
+        todo = {
+            'id': 1,
+            'text': '无截止时间任务',
+            'completed': False,
+            'deadline': None
+        }
+        
+        result = self.config_manager.is_task_urgent(todo)
+        self.assertFalse(result)
+    
+    def test_get_urgent_todos(self):
+        """测试获取紧急任务"""
+        now = datetime.now()
+        
+        urgent_deadline1 = (now + timedelta(hours=1)).isoformat()
+        urgent_deadline2 = (now + timedelta(hours=2)).isoformat()
+        non_urgent_deadline = (now + timedelta(hours=5)).isoformat()
+        
+        self.config_manager.add_todo('2024-01-01', '紧急任务1', deadline=urgent_deadline1)
+        self.config_manager.add_todo('2024-01-01', '紧急任务2', deadline=urgent_deadline2)
+        self.config_manager.add_todo('2024-01-01', '非紧急任务', deadline=non_urgent_deadline)
+        self.config_manager.add_todo('2024-01-01', '无截止时间任务')
+        
+        urgent_todos = self.config_manager.get_urgent_todos()
+        
+        self.assertEqual(len(urgent_todos), 2)
+        
+        urgent_texts = [item['todo']['text'] for item in urgent_todos]
+        self.assertIn('紧急任务1', urgent_texts)
+        self.assertIn('紧急任务2', urgent_texts)
+    
+    def test_get_urgent_todos_sorted(self):
+        """测试紧急任务是否按截止时间排序"""
+        now = datetime.now()
+        
+        deadline_later = (now + timedelta(hours=2)).isoformat()
+        deadline_earlier = (now + timedelta(hours=1)).isoformat()
+        
+        self.config_manager.add_todo('2024-01-01', '晚一点的任务', deadline=deadline_later)
+        self.config_manager.add_todo('2024-01-01', '早一点的任务', deadline=deadline_earlier)
+        
+        urgent_todos = self.config_manager.get_urgent_todos()
+        
+        self.assertEqual(len(urgent_todos), 2)
+        self.assertEqual(urgent_todos[0]['todo']['text'], '早一点的任务')
+        self.assertEqual(urgent_todos[1]['todo']['text'], '晚一点的任务')
+    
+    def test_get_time_remaining(self):
+        """测试获取剩余时间"""
+        now = datetime.now()
+        deadline = (now + timedelta(hours=2)).isoformat()
+        
+        todo = {
+            'id': 1,
+            'text': '测试任务',
+            'deadline': deadline
+        }
+        
+        remaining = self.config_manager.get_time_remaining(todo)
+        
+        self.assertIsNotNone(remaining)
+        self.assertGreater(remaining, 0)
+        self.assertLess(remaining, 2 * 3600 + 1)
+    
+    def test_get_time_remaining_no_deadline(self):
+        """测试没有截止时间时返回None"""
+        todo = {
+            'id': 1,
+            'text': '测试任务',
+            'deadline': None
+        }
+        
+        remaining = self.config_manager.get_time_remaining(todo)
+        self.assertIsNone(remaining)
+    
+    def test_get_time_remaining_expired(self):
+        """测试已过期的任务返回负数"""
+        deadline = (datetime.now() - timedelta(hours=1)).isoformat()
+        
+        todo = {
+            'id': 1,
+            'text': '已过期任务',
+            'deadline': deadline
+        }
+        
+        remaining = self.config_manager.get_time_remaining(todo)
+        
+        self.assertIsNotNone(remaining)
+        self.assertLess(remaining, 0)
+    
+    def test_get_all_incomplete_todos(self):
+        """测试获取所有未完成的任务"""
+        now = datetime.now()
+        
+        deadline1 = (now + timedelta(hours=1)).isoformat()
+        deadline2 = (now + timedelta(hours=2)).isoformat()
+        
+        self.config_manager.add_todo('2024-01-01', '未完成带截止时间1', deadline=deadline1)
+        self.config_manager.add_todo('2024-01-01', '已完成任务', deadline=deadline2)
+        self.config_manager.add_todo('2024-01-02', '未完成无截止时间')
+        
+        todos = self.config_manager.data['2024-01-01']
+        for todo in todos:
+            if todo['text'] == '已完成任务':
+                todo['completed'] = True
+        
+        incomplete_todos = self.config_manager.get_all_incomplete_todos()
+        
+        self.assertEqual(len(incomplete_todos), 2)
+        
+        incomplete_texts = [item['todo']['text'] for item in incomplete_todos]
+        self.assertIn('未完成带截止时间1', incomplete_texts)
+        self.assertIn('未完成无截止时间', incomplete_texts)
+        self.assertNotIn('已完成任务', incomplete_texts)
+    
+    def test_get_all_incomplete_todos_sorted(self):
+        """测试未完成任务是否按截止时间排序"""
+        now = datetime.now()
+        
+        deadline_early = (now + timedelta(hours=1)).isoformat()
+        deadline_late = (now + timedelta(hours=3)).isoformat()
+        
+        self.config_manager.add_todo('2024-01-01', '晚截止任务', deadline=deadline_late)
+        self.config_manager.add_todo('2024-01-01', '早截止任务', deadline=deadline_early)
+        self.config_manager.add_todo('2024-01-01', '无截止时间任务')
+        
+        incomplete_todos = self.config_manager.get_all_incomplete_todos()
+        
+        self.assertEqual(len(incomplete_todos), 3)
+        self.assertEqual(incomplete_todos[0]['todo']['text'], '早截止任务')
+        self.assertEqual(incomplete_todos[1]['todo']['text'], '晚截止任务')
+        self.assertEqual(incomplete_todos[2]['todo']['text'], '无截止时间任务')
+    
+    def test_clear_deadline(self):
+        """测试清除截止时间"""
+        deadline = (datetime.now() + timedelta(hours=2)).isoformat()
+        todo = self.config_manager.add_todo('2024-01-01', '测试清除截止时间', deadline=deadline)
+        
+        self.assertIsNotNone(todo['deadline'])
+        
+        result = self.config_manager.update_todo('2024-01-01', todo['id'], deadline=None)
+        
+        self.assertTrue(result)
+        self.assertIsNone(self.config_manager.data['2024-01-01'][0]['deadline'])
 
 
 if __name__ == '__main__':

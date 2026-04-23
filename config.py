@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class ConfigManager:
     def __init__(self):
@@ -56,14 +56,15 @@ class ConfigManager:
     def get_todos(self, date_str):
         return self.data.get(date_str, [])
     
-    def add_todo(self, date_str, todo_text):
+    def add_todo(self, date_str, todo_text, deadline=None):
         if date_str not in self.data:
             self.data[date_str] = []
         todo_item = {
             'id': len(self.data[date_str]) + 1,
             'text': todo_text,
             'completed': False,
-            'created_at': datetime.now().isoformat()
+            'created_at': datetime.now().isoformat(),
+            'deadline': deadline
         }
         self.data[date_str].append(todo_item)
         self.save_data()
@@ -126,3 +127,80 @@ class ConfigManager:
             'height': height
         }
         self.save_config()
+    
+    def get_urgent_todos(self, hours=3):
+        """获取即将超时的任务（默认3小时内）"""
+        urgent_todos = []
+        now = datetime.now()
+        cutoff_time = now + timedelta(hours=hours)
+        
+        for date_str, todos in self.data.items():
+            for todo in todos:
+                if not todo.get('completed', False) and todo.get('deadline'):
+                    try:
+                        deadline = datetime.fromisoformat(todo['deadline'])
+                        if now <= deadline <= cutoff_time:
+                            urgent_todos.append({
+                                'date': date_str,
+                                'todo': todo,
+                                'deadline': deadline
+                            })
+                    except (ValueError, TypeError):
+                        continue
+        
+        # 按截止时间排序，越早的越靠前
+        urgent_todos.sort(key=lambda x: x['deadline'])
+        return urgent_todos
+    
+    def get_all_incomplete_todos(self):
+        """获取所有未完成的任务"""
+        incomplete_todos = []
+        for date_str, todos in self.data.items():
+            for todo in todos:
+                if not todo.get('completed', False):
+                    deadline = None
+                    if todo.get('deadline'):
+                        try:
+                            deadline = datetime.fromisoformat(todo['deadline'])
+                        except (ValueError, TypeError):
+                            pass
+                    incomplete_todos.append({
+                        'date': date_str,
+                        'todo': todo,
+                        'deadline': deadline
+                    })
+        
+        # 按截止时间排序，有截止时间的排在前面，越早的越靠前
+        def sort_key(item):
+            if item['deadline']:
+                return (0, item['deadline'])
+            else:
+                return (1, datetime.max)
+        
+        incomplete_todos.sort(key=sort_key)
+        return incomplete_todos
+    
+    def is_task_urgent(self, todo, hours=3):
+        """检查任务是否即将超时"""
+        if not todo.get('deadline') or todo.get('completed', False):
+            return False
+        
+        try:
+            now = datetime.now()
+            deadline = datetime.fromisoformat(todo['deadline'])
+            cutoff_time = now + timedelta(hours=hours)
+            return now <= deadline <= cutoff_time
+        except (ValueError, TypeError):
+            return False
+    
+    def get_time_remaining(self, todo):
+        """获取任务剩余时间（秒），如果已过期返回负数，如果没有截止时间返回None"""
+        if not todo.get('deadline'):
+            return None
+        
+        try:
+            now = datetime.now()
+            deadline = datetime.fromisoformat(todo['deadline'])
+            return (deadline - now).total_seconds()
+        except (ValueError, TypeError):
+            return None
