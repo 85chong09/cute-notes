@@ -56,8 +56,8 @@ class TodoItem(QWidget):
         self.config = config
         self.main_window = main_window
         self.is_expanded = True
-        self.setMinimumHeight(50)
-        self.setMaximumHeight(100)
+        self.setMinimumHeight(65)
+        self.setMaximumHeight(120)
         self.setStyleSheet(self.get_style())
     
     def get_style(self):
@@ -130,7 +130,8 @@ class TodoItem(QWidget):
         delete_btn_size = 20
         text_left = padding + circle_size + 10
         text_right = self.width() - padding - delete_btn_size - 10
-        text_rect = QRect(text_left, 5, text_right - text_left, self.height() - 10)
+        vertical_padding = 12
+        text_rect = QRect(text_left, vertical_padding, text_right - text_left, self.height() - vertical_padding * 2)
         painter.drawText(text_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.todo['text'])
         
         delete_btn_rect = QRect(self.width() - padding - delete_btn_size, (self.height() - delete_btn_size) // 2, delete_btn_size, delete_btn_size)
@@ -262,7 +263,7 @@ class MainWindow(QWidget):
     
     def create_expanded_ui(self):
         self.expanded_widget = QWidget(self)
-        self.expanded_widget.setMinimumSize(380, 480)
+        self.expanded_widget.setMinimumSize(480, 520)
         self.expanded_layout = QVBoxLayout(self.expanded_widget)
         self.expanded_layout.setContentsMargins(15, 15, 15, 15)
         self.expanded_layout.setSpacing(10)
@@ -429,6 +430,7 @@ class MainWindow(QWidget):
             QListWidget {
                 border: none;
                 background-color: transparent;
+                outline: none;
             }
             QListWidget::item {
                 border-radius: 12px;
@@ -437,6 +439,26 @@ class MainWindow(QWidget):
             }
             QListWidget::item:selected {
                 background-color: transparent;
+            }
+            QScrollBar:vertical {
+                background-color: rgba(255, 248, 240, 0.5);
+                width: 10px;
+                border-radius: 5px;
+                margin: 2px;
+            }
+            QScrollBar::handle:vertical {
+                background-color: rgba(255, 180, 120, 0.8);
+                border-radius: 5px;
+                min-height: 30px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background-color: rgba(255, 150, 100, 0.9);
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background-color: none;
             }
         ''')
         self.todo_list_layout.addWidget(self.todo_list)
@@ -552,15 +574,19 @@ class MainWindow(QWidget):
         self.locked_widget.setFixedSize(100, 100)
         locked_layout = QVBoxLayout(self.locked_widget)
         locked_layout.setContentsMargins(0, 0, 0, 0)
+        locked_layout.setAlignment(Qt.AlignCenter)
         
         self.lock_label = QLabel('🔒')
+        self.lock_label.setFixedSize(94, 94)
         self.lock_label.setAlignment(Qt.AlignCenter)
         self.lock_label.setStyleSheet('''
             QLabel {
                 font-size: 40px;
                 background-color: rgba(100, 100, 120, 0.9);
-                border-radius: 50px;
+                border-radius: 47px;
                 border: 3px solid rgba(80, 80, 100, 0.8);
+                padding: 0px;
+                margin: 0px;
             }
         ''')
         self.lock_label.mousePressEvent = self.locked_clicked
@@ -584,18 +610,18 @@ class MainWindow(QWidget):
             self.collapsed_widget.hide()
             self.expanded_widget.show()
             
-            self.setMinimumSize(380, 480)
+            self.setMinimumSize(480, 520)
             self.setMaximumSize(16777215, 16777215)
             
             geometry = self.config.config.get('window_geometry', {
-                'x': self.x(), 'y': self.y(), 'width': 400, 'height': 500
+                'x': self.x(), 'y': self.y(), 'width': 500, 'height': 550
             })
-            width = geometry.get('width', 400)
-            height = geometry.get('height', 500)
-            if width < 380:
-                width = 400
-            if height < 480:
-                height = 500
+            width = geometry.get('width', 500)
+            height = geometry.get('height', 550)
+            if width < 480:
+                width = 500
+            if height < 520:
+                height = 550
             self.setGeometry(
                 geometry.get('x', self.x()),
                 geometry.get('y', self.y()),
@@ -701,7 +727,7 @@ class MainWindow(QWidget):
     
     def update_geometry(self):
         geometry = self.config.config.get('window_geometry', {
-            'x': 100, 'y': 100, 'width': 400, 'height': 500
+            'x': 100, 'y': 100, 'width': 500, 'height': 550
         })
         if self.is_expanded:
             self.setGeometry(
@@ -781,11 +807,11 @@ class MainWindow(QWidget):
             self.collapsed_widget.hide()
             self.expanded_widget.show()
             
-            self.setMinimumSize(380, 480)
+            self.setMinimumSize(480, 520)
             self.setMaximumSize(16777215, 16777215)
             
             geometry = self.config.config.get('window_geometry', {
-                'x': self.x(), 'y': self.y(), 'width': 400, 'height': 500
+                'x': self.x(), 'y': self.y(), 'width': 500, 'height': 550
             })
             self.setGeometry(
                 geometry.get('x', self.x()),
