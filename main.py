@@ -451,24 +451,53 @@ class TagManagerDialog(QDialog):
         ok_btn = msg_box.addButton('确定', QMessageBox.AcceptRole)
         cancel_btn = msg_box.addButton('取消', QMessageBox.RejectRole)
         
+        ok_btn.setStyleSheet('''
+            QPushButton {
+                padding: 10px 25px;
+                border-radius: 12px;
+                border: 2px solid #cc4444;
+                font-size: 14px;
+                font-weight: bold;
+                color: white;
+                background-color: #ff6b6b;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #ff5252;
+                border: 2px solid #b71c1c;
+            }
+            QPushButton:pressed {
+                background-color: #e53935;
+            }
+        ''')
+        
+        cancel_btn.setStyleSheet('''
+            QPushButton {
+                padding: 10px 25px;
+                border-radius: 12px;
+                border: 2px solid #888888;
+                font-size: 14px;
+                color: #5a4a3a;
+                background-color: #f5f5f5;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+                border: 2px solid #666666;
+            }
+            QPushButton:pressed {
+                background-color: #bdbdbd;
+            }
+        ''')
+        
         msg_box.setStyleSheet('''
             QMessageBox {
-                background-color: rgba(255, 248, 240, 0.98);
+                background-color: #fff8f0;
             }
             QMessageBox QLabel {
                 color: #5a4a3a;
-                font-size: 13px;
-            }
-            QMessageBox QPushButton {
-                padding: 8px 20px;
-                border-radius: 10px;
-                border: none;
-                font-size: 13px;
-                color: white;
-                background-color: rgba(100, 150, 255, 0.9);
-            }
-            QMessageBox QPushButton:hover {
-                background-color: rgba(80, 130, 255, 0.9);
+                font-size: 14px;
+                padding: 10px;
             }
         ''')
         
@@ -1784,24 +1813,53 @@ class MainWindow(QWidget):
         ok_btn = msg_box.addButton('确定', QMessageBox.AcceptRole)
         cancel_btn = msg_box.addButton('取消', QMessageBox.RejectRole)
         
+        ok_btn.setStyleSheet('''
+            QPushButton {
+                padding: 10px 25px;
+                border-radius: 12px;
+                border: 2px solid #cc4444;
+                font-size: 14px;
+                font-weight: bold;
+                color: white;
+                background-color: #ff6b6b;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #ff5252;
+                border: 2px solid #b71c1c;
+            }
+            QPushButton:pressed {
+                background-color: #e53935;
+            }
+        ''')
+        
+        cancel_btn.setStyleSheet('''
+            QPushButton {
+                padding: 10px 25px;
+                border-radius: 12px;
+                border: 2px solid #888888;
+                font-size: 14px;
+                color: #5a4a3a;
+                background-color: #f5f5f5;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+                border: 2px solid #666666;
+            }
+            QPushButton:pressed {
+                background-color: #bdbdbd;
+            }
+        ''')
+        
         msg_box.setStyleSheet('''
             QMessageBox {
-                background-color: rgba(255, 248, 240, 0.98);
+                background-color: #fff8f0;
             }
             QMessageBox QLabel {
                 color: #5a4a3a;
-                font-size: 13px;
-            }
-            QMessageBox QPushButton {
-                padding: 8px 20px;
-                border-radius: 10px;
-                border: none;
-                font-size: 13px;
-                color: white;
-                background-color: rgba(100, 150, 255, 0.9);
-            }
-            QMessageBox QPushButton:hover {
-                background-color: rgba(80, 130, 255, 0.9);
+                font-size: 14px;
+                padding: 10px;
             }
         ''')
         
