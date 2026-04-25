@@ -919,13 +919,12 @@ class RepeatRulePickerDialog(QDialog):
             QCheckBox {
                 color: #5a4a3a;
                 font-size: 12px;
-                padding: 8px 10px;
-                spacing: 8px;
-                min-height: 25px;
+                padding: 3px 5px;
+                spacing: 6px;
             }
             QCheckBox::indicator {
-                width: 18px;
-                height: 18px;
+                width: 16px;
+                height: 16px;
             }
             QSpinBox {
                 padding: 8px;
