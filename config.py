@@ -41,10 +41,14 @@ class ConfigManager:
         if os.path.exists(self.data_file):
             try:
                 with open(self.data_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    if isinstance(data, dict) and 'todos' in data and 'tags' in data:
+                        return data
+                    else:
+                        return {'todos': data, 'tags': []}
             except:
-                return {}
-        return {}
+                return {'todos': {}, 'tags': []}
+        return {'todos': {}, 'tags': []}
     
     def save_data(self):
         try:
@@ -54,25 +58,28 @@ class ConfigManager:
             pass
     
     def get_todos(self, date_str):
-        return self.data.get(date_str, [])
+        return self.data.get('todos', {}).get(date_str, [])
     
-    def add_todo(self, date_str, todo_text, deadline=None):
-        if date_str not in self.data:
-            self.data[date_str] = []
+    def add_todo(self, date_str, todo_text, deadline=None, tag_ids=None):
+        if 'todos' not in self.data:
+            self.data['todos'] = {}
+        if date_str not in self.data['todos']:
+            self.data['todos'][date_str] = []
         todo_item = {
-            'id': len(self.data[date_str]) + 1,
+            'id': len(self.data['todos'][date_str]) + 1,
             'text': todo_text,
             'completed': False,
             'created_at': datetime.now().isoformat(),
-            'deadline': deadline
+            'deadline': deadline,
+            'tag_ids': tag_ids if tag_ids else []
         }
-        self.data[date_str].append(todo_item)
+        self.data['todos'][date_str].append(todo_item)
         self.save_data()
         return todo_item
     
     def update_todo(self, date_str, todo_id, **kwargs):
-        if date_str in self.data:
-            for todo in self.data[date_str]:
+        if 'todos' in self.data and date_str in self.data['todos']:
+            for todo in self.data['todos'][date_str]:
                 if todo['id'] == todo_id:
                     todo.update(kwargs)
                     self.save_data()
@@ -80,19 +87,20 @@ class ConfigManager:
         return False
     
     def delete_todo(self, date_str, todo_id):
-        if date_str in self.data:
-            for i, todo in enumerate(self.data[date_str]):
+        if 'todos' in self.data and date_str in self.data['todos']:
+            for i, todo in enumerate(self.data['todos'][date_str]):
                 if todo['id'] == todo_id:
-                    self.data[date_str].pop(i)
-                    if not self.data[date_str]:
-                        del self.data[date_str]
+                    self.data['todos'][date_str].pop(i)
+                    if not self.data['todos'][date_str]:
+                        del self.data['todos'][date_str]
                     self.save_data()
                     return True
         return False
     
     def search_todos(self, keyword):
         results = []
-        for date_str, todos in self.data.items():
+        todos_dict = self.data.get('todos', {})
+        for date_str, todos in todos_dict.items():
             for todo in todos:
                 if keyword.lower() in todo['text'].lower():
                     results.append({
@@ -100,6 +108,57 @@ class ConfigManager:
                         'todo': todo
                     })
         return results
+    
+    def get_all_tags(self):
+        return self.data.get('tags', [])
+    
+    def add_tag(self, name):
+        if 'tags' not in self.data:
+            self.data['tags'] = []
+        tags = self.data['tags']
+        tag_id = 1
+        if tags:
+            tag_id = max(tag['id'] for tag in tags) + 1
+        tag = {
+            'id': tag_id,
+            'name': name,
+            'color': '#FFD700'
+        }
+        tags.append(tag)
+        self.save_data()
+        return tag
+    
+    def update_tag(self, tag_id, new_name):
+        if 'tags' not in self.data:
+            return False
+        for tag in self.data['tags']:
+            if tag['id'] == tag_id:
+                tag['name'] = new_name
+                self.save_data()
+                return True
+        return False
+    
+    def delete_tag(self, tag_id):
+        if 'tags' not in self.data:
+            return False
+        tags = self.data['tags']
+        for i, tag in enumerate(tags):
+            if tag['id'] == tag_id:
+                tags.pop(i)
+                for date_str, todos in self.data.get('todos', {}).items():
+                    for todo in todos:
+                        if 'tag_ids' in todo and tag_id in todo['tag_ids']:
+                            todo['tag_ids'].remove(tag_id)
+                self.save_data()
+                return True
+        return False
+    
+    def get_tag(self, tag_id):
+        tags = self.data.get('tags', [])
+        for tag in tags:
+            if tag['id'] == tag_id:
+                return tag
+        return None
     
     def set_password(self, password):
         self.config['password'] = password
@@ -133,8 +192,9 @@ class ConfigManager:
         urgent_todos = []
         now = datetime.now()
         cutoff_time = now + timedelta(hours=hours)
+        todos_dict = self.data.get('todos', {})
         
-        for date_str, todos in self.data.items():
+        for date_str, todos in todos_dict.items():
             for todo in todos:
                 if not todo.get('completed', False) and todo.get('deadline'):
                     try:
@@ -155,7 +215,9 @@ class ConfigManager:
     def get_all_incomplete_todos(self):
         """获取所有未完成的任务"""
         incomplete_todos = []
-        for date_str, todos in self.data.items():
+        todos_dict = self.data.get('todos', {})
+        
+        for date_str, todos in todos_dict.items():
             for todo in todos:
                 if not todo.get('completed', False):
                     deadline = None

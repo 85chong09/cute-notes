@@ -197,6 +197,384 @@ class DeadlinePickerDialog(QDialog):
         """获取选择的截止时间"""
         return self.selected_deadline
 
+class TagManagerDialog(QDialog):
+    def __init__(self, config, parent=None):
+        super().__init__(parent)
+        self.config = config
+        self.setWindowTitle('🏷️ 标签管理')
+        self.setFixedSize(400, 500)
+        self.setStyleSheet('''
+            QDialog {
+                background-color: rgba(255, 248, 240, 0.98);
+                border-radius: 15px;
+            }
+            QLabel {
+                color: #5a4a3a;
+                font-size: 13px;
+            }
+            QLineEdit {
+                padding: 10px;
+                border-radius: 10px;
+                border: 2px solid rgba(255, 200, 150, 0.5);
+                background-color: white;
+                font-size: 14px;
+            }
+            QPushButton {
+                padding: 8px 15px;
+                border-radius: 10px;
+                border: none;
+                font-size: 13px;
+                color: white;
+            }
+            QListWidget {
+                border: 2px solid rgba(200, 180, 160, 0.3);
+                border-radius: 10px;
+                background-color: rgba(255, 255, 255, 0.8);
+            }
+            QListWidget::item {
+                padding: 10px;
+                border-bottom: 1px solid rgba(200, 180, 160, 0.2);
+            }
+            QListWidget::item:selected {
+                background-color: rgba(255, 200, 150, 0.3);
+                border-radius: 5px;
+            }
+        ''')
+        self.init_ui()
+    
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(25, 25, 25, 25)
+        layout.setSpacing(15)
+        
+        title_label = QLabel('管理标签:')
+        title_label.setFont(QFont('Microsoft YaHei', 12, QFont.Bold))
+        layout.addWidget(title_label)
+        
+        add_layout = QHBoxLayout()
+        
+        self.new_tag_input = QLineEdit()
+        self.new_tag_input.setPlaceholderText('输入新标签名称...')
+        add_layout.addWidget(self.new_tag_input)
+        
+        self.add_tag_btn = QPushButton('➕ 添加')
+        self.add_tag_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(100, 180, 100, 0.9);
+            }
+            QPushButton:hover {
+                background-color: rgba(80, 160, 80, 0.9);
+            }
+        ''')
+        self.add_tag_btn.clicked.connect(self.add_tag)
+        add_layout.addWidget(self.add_tag_btn)
+        
+        layout.addLayout(add_layout)
+        
+        self.tag_list = QListWidget()
+        layout.addWidget(self.tag_list)
+        
+        btn_layout = QHBoxLayout()
+        
+        self.edit_btn = QPushButton('✏️ 修改')
+        self.edit_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(100, 150, 255, 0.9);
+            }
+            QPushButton:hover {
+                background-color: rgba(80, 130, 255, 0.9);
+            }
+        ''')
+        self.edit_btn.clicked.connect(self.edit_tag)
+        btn_layout.addWidget(self.edit_btn)
+        
+        self.delete_btn = QPushButton('🗑️ 删除')
+        self.delete_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(255, 100, 100, 0.9);
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 80, 80, 0.9);
+            }
+        ''')
+        self.delete_btn.clicked.connect(self.delete_tag)
+        btn_layout.addWidget(self.delete_btn)
+        
+        btn_layout.addStretch()
+        
+        self.close_btn = QPushButton('关闭')
+        self.close_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(200, 200, 200, 0.9);
+                color: #5a4a3a;
+            }
+            QPushButton:hover {
+                background-color: rgba(180, 180, 180, 0.9);
+            }
+        ''')
+        self.close_btn.clicked.connect(self.accept)
+        btn_layout.addWidget(self.close_btn)
+        
+        layout.addLayout(btn_layout)
+        
+        self.refresh_tag_list()
+    
+    def refresh_tag_list(self):
+        self.tag_list.clear()
+        tags = self.config.get_all_tags()
+        for tag in tags:
+            item = QListWidgetItem(f'🏷️ {tag["name"]}')
+            item.setData(Qt.UserRole, tag['id'])
+            self.tag_list.addItem(item)
+    
+    def add_tag(self):
+        name = self.new_tag_input.text().strip()
+        if not name:
+            QMessageBox.warning(self, '提示', '请输入标签名称！')
+            return
+        
+        existing_tags = self.config.get_all_tags()
+        for tag in existing_tags:
+            if tag['name'] == name:
+                QMessageBox.warning(self, '提示', '该标签已存在！')
+                return
+        
+        self.config.add_tag(name)
+        self.new_tag_input.clear()
+        self.refresh_tag_list()
+    
+    def edit_tag(self):
+        current_item = self.tag_list.currentItem()
+        if not current_item:
+            QMessageBox.warning(self, '提示', '请选择要修改的标签！')
+            return
+        
+        tag_id = current_item.data(Qt.UserRole)
+        old_name = current_item.text().replace('🏷️ ', '')
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle('✏️ 修改标签')
+        dialog.setFixedSize(300, 150)
+        dialog.setStyleSheet('''
+            QDialog {
+                background-color: rgba(255, 248, 240, 0.98);
+                border-radius: 15px;
+            }
+            QLabel {
+                color: #5a4a3a;
+                font-size: 13px;
+            }
+            QLineEdit {
+                padding: 10px;
+                border-radius: 10px;
+                border: 2px solid rgba(255, 200, 150, 0.5);
+                background-color: white;
+                font-size: 14px;
+            }
+            QPushButton {
+                padding: 8px 15px;
+                border-radius: 10px;
+                border: none;
+                font-size: 13px;
+                color: white;
+            }
+        ''')
+        
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        label = QLabel('输入新标签名称:')
+        layout.addWidget(label)
+        
+        name_input = QLineEdit()
+        name_input.setText(old_name)
+        layout.addWidget(name_input)
+        
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        
+        cancel_btn = QPushButton('取消')
+        cancel_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(200, 200, 200, 0.9);
+                color: #5a4a3a;
+            }
+            QPushButton:hover {
+                background-color: rgba(180, 180, 180, 0.9);
+            }
+        ''')
+        cancel_btn.clicked.connect(dialog.reject)
+        btn_layout.addWidget(cancel_btn)
+        
+        ok_btn = QPushButton('确定')
+        ok_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(100, 150, 255, 0.9);
+            }
+            QPushButton:hover {
+                background-color: rgba(80, 130, 255, 0.9);
+            }
+        ''')
+        btn_layout.addWidget(ok_btn)
+        
+        layout.addLayout(btn_layout)
+        
+        def do_edit():
+            new_name = name_input.text().strip()
+            if not new_name:
+                QMessageBox.warning(dialog, '提示', '请输入标签名称！')
+                return
+            self.config.update_tag(tag_id, new_name)
+            self.refresh_tag_list()
+            dialog.accept()
+        
+        ok_btn.clicked.connect(do_edit)
+        
+        dialog.exec_()
+    
+    def delete_tag(self):
+        current_item = self.tag_list.currentItem()
+        if not current_item:
+            QMessageBox.warning(self, '提示', '请选择要删除的标签！')
+            return
+        
+        tag_id = current_item.data(Qt.UserRole)
+        tag_name = current_item.text().replace('🏷️ ', '')
+        
+        reply = QMessageBox.question(
+            self, '确认删除',
+            f'确定要删除标签 "{tag_name}" 吗？\n该操作会从所有待办事项中移除此标签。',
+            QMessageBox.Yes | QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            self.config.delete_tag(tag_id)
+            self.refresh_tag_list()
+
+class TagPickerDialog(QDialog):
+    def __init__(self, config, current_tag_ids=None, parent=None):
+        super().__init__(parent)
+        self.config = config
+        self.current_tag_ids = current_tag_ids if current_tag_ids else []
+        self.selected_tag_ids = set(self.current_tag_ids)
+        self.setWindowTitle('🏷️ 选择标签')
+        self.setFixedSize(350, 450)
+        self.setStyleSheet('''
+            QDialog {
+                background-color: rgba(255, 248, 240, 0.98);
+                border-radius: 15px;
+            }
+            QLabel {
+                color: #5a4a3a;
+                font-size: 13px;
+            }
+            QPushButton {
+                padding: 8px 15px;
+                border-radius: 10px;
+                border: none;
+                font-size: 13px;
+                color: white;
+            }
+            QListWidget {
+                border: 2px solid rgba(200, 180, 160, 0.3);
+                border-radius: 10px;
+                background-color: rgba(255, 255, 255, 0.8);
+            }
+            QListWidget::item {
+                padding: 10px;
+                border-bottom: 1px solid rgba(200, 180, 160, 0.2);
+            }
+        ''')
+        self.init_ui()
+    
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(25, 25, 25, 25)
+        layout.setSpacing(15)
+        
+        title_label = QLabel('为待办事项选择标签:')
+        title_label.setFont(QFont('Microsoft YaHei', 12, QFont.Bold))
+        layout.addWidget(title_label)
+        
+        self.tag_list = QListWidget()
+        self.tag_list.setSelectionMode(QListWidget.NoSelection)
+        layout.addWidget(self.tag_list)
+        
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        
+        cancel_btn = QPushButton('取消')
+        cancel_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(200, 200, 200, 0.9);
+                color: #5a4a3a;
+            }
+            QPushButton:hover {
+                background-color: rgba(180, 180, 180, 0.9);
+            }
+        ''')
+        cancel_btn.clicked.connect(self.reject)
+        btn_layout.addWidget(cancel_btn)
+        
+        ok_btn = QPushButton('确定')
+        ok_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(100, 180, 100, 0.9);
+            }
+            QPushButton:hover {
+                background-color: rgba(80, 160, 80, 0.9);
+            }
+        ''')
+        ok_btn.clicked.connect(self.accept)
+        btn_layout.addWidget(ok_btn)
+        
+        layout.addLayout(btn_layout)
+        
+        self.refresh_tag_list()
+        self.tag_list.itemClicked.connect(self.toggle_tag)
+    
+    def refresh_tag_list(self):
+        self.tag_list.clear()
+        tags = self.config.get_all_tags()
+        
+        if not tags:
+            empty_label = QLabel('还没有标签，请先在标签管理中添加标签')
+            empty_label.setAlignment(Qt.AlignCenter)
+            empty_label.setStyleSheet('color: #9e9e9e; padding: 20px;')
+            list_item = QListWidgetItem(self.tag_list)
+            list_item.setSizeHint(empty_label.sizeHint())
+            self.tag_list.setItemWidget(list_item, empty_label)
+            return
+        
+        for tag in tags:
+            is_selected = tag['id'] in self.selected_tag_ids
+            checkbox_text = f'✓ {tag["name"]}' if is_selected else f'○ {tag["name"]}'
+            item = QListWidgetItem(checkbox_text)
+            item.setData(Qt.UserRole, tag['id'])
+            item.setData(Qt.UserRole + 1, tag['name'])
+            
+            if is_selected:
+                item.setBackground(QColor(255, 215, 0, 100))
+            
+            self.tag_list.addItem(item)
+    
+    def toggle_tag(self, item):
+        tag_id = item.data(Qt.UserRole)
+        tag_name = item.data(Qt.UserRole + 1)
+        
+        if tag_id in self.selected_tag_ids:
+            self.selected_tag_ids.remove(tag_id)
+            item.setText(f'○ {tag_name}')
+            item.setBackground(QColor(255, 255, 255, 0))
+        else:
+            self.selected_tag_ids.add(tag_id)
+            item.setText(f'✓ {tag_name}')
+            item.setBackground(QColor(255, 215, 0, 100))
+    
+    def get_selected_tag_ids(self):
+        return list(self.selected_tag_ids)
+
 class LockIconWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -348,11 +726,63 @@ class TodoItem(QWidget):
         
         delete_btn_size = 20
         clock_btn_size = 24
+        tag_btn_size = 24
         text_left = padding + circle_size + 10
-        text_right = self.width() - padding - delete_btn_size - 10 - clock_btn_size - 5
+        text_right = self.width() - padding - delete_btn_size - 10 - clock_btn_size - 5 - tag_btn_size - 5
         vertical_padding = 28
-        text_rect = QRect(text_left, vertical_padding, text_right - text_left, self.height() - vertical_padding * 2)
+        
+        tag_ids = self.todo.get('tag_ids', [])
+        tag_labels = []
+        if tag_ids:
+            for tag_id in tag_ids:
+                tag = self.config.get_tag(tag_id)
+                if tag:
+                    tag_labels.append(tag['name'])
+        
+        available_height = self.height() - vertical_padding * 2
+        tags_height = 0
+        if tag_labels:
+            tags_height = 24
+        
+        text_rect = QRect(text_left, vertical_padding, text_right - text_left, available_height - tags_height - 5)
         painter.drawText(text_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.todo['text'])
+        
+        if tag_labels:
+            tag_font = QFont('Microsoft YaHei', 9)
+            painter.setFont(tag_font)
+            tag_x = text_left
+            tag_y = vertical_padding + (available_height - tags_height) + 5
+            
+            for tag_name in tag_labels:
+                tag_color = QColor(255, 215, 0)
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(tag_color))
+                
+                fm = painter.fontMetrics()
+                text_width = fm.width(tag_name)
+                tag_width = text_width + 20
+                tag_height = 20
+                
+                if tag_x + tag_width > text_right:
+                    break
+                
+                tag_rect = QRect(tag_x, tag_y, tag_width, tag_height)
+                painter.drawRoundedRect(tag_rect, 10, 10)
+                
+                painter.setPen(QPen(QColor(90, 74, 58)))
+                painter.drawText(tag_rect, Qt.AlignCenter, tag_name)
+                
+                tag_x += tag_width + 8
+        
+        tag_btn_x = self.width() - padding - delete_btn_size - 5 - clock_btn_size - 5 - tag_btn_size
+        tag_btn_rect = QRect(tag_btn_x, (self.height() - tag_btn_size) // 2, tag_btn_size, tag_btn_size)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(QColor(255, 215, 0)))
+        painter.drawEllipse(tag_btn_rect)
+        
+        painter.setPen(QPen(QColor(90, 74, 58), 1))
+        painter.setFont(QFont('Microsoft YaHei', 12))
+        painter.drawText(tag_btn_rect, Qt.AlignCenter, '🏷️')
         
         clock_btn_x = self.width() - padding - delete_btn_size - 5 - clock_btn_size
         clock_btn_rect = QRect(clock_btn_x, (self.height() - clock_btn_size) // 2, clock_btn_size, clock_btn_size)
@@ -426,12 +856,24 @@ class TodoItem(QWidget):
             self.update()
             self.main_window.update_urgent_badge()
     
+    def show_tag_picker_dialog(self):
+        """显示标签选择对话框"""
+        current_tag_ids = self.todo.get('tag_ids', [])
+        dialog = TagPickerDialog(self.config, current_tag_ids, self)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            selected_tag_ids = dialog.get_selected_tag_ids()
+            self.todo['tag_ids'] = selected_tag_ids
+            self.config.update_todo(self.date_str, self.todo['id'], tag_ids=selected_tag_ids)
+            self.update()
+    
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             padding = 12
             circle_size = 16
             delete_btn_size = 20
             clock_btn_size = 24
+            tag_btn_size = 24
             is_completed = self.todo.get('completed', False)
             
             circle_rect = QRect(padding, (self.height() - circle_size) // 2, circle_size, circle_size)
@@ -440,19 +882,26 @@ class TodoItem(QWidget):
                 event.accept()
                 return
             else:
-                clock_btn_x = self.width() - padding - delete_btn_size - 5 - clock_btn_size
-                clock_btn_rect = QRect(clock_btn_x, (self.height() - clock_btn_size) // 2, clock_btn_size, clock_btn_size)
-                if clock_btn_rect.contains(event.pos()):
-                    if not is_completed:
-                        self.show_deadline_dialog()
+                tag_btn_x = self.width() - padding - delete_btn_size - 5 - clock_btn_size - 5 - tag_btn_size
+                tag_btn_rect = QRect(tag_btn_x, (self.height() - tag_btn_size) // 2, tag_btn_size, tag_btn_size)
+                if tag_btn_rect.contains(event.pos()):
+                    self.show_tag_picker_dialog()
                     event.accept()
                     return
                 else:
-                    delete_btn_rect = QRect(self.width() - padding - delete_btn_size, (self.height() - delete_btn_size) // 2, delete_btn_size, delete_btn_size)
-                    if delete_btn_rect.contains(event.pos()):
-                        self.main_window.delete_todo(self.todo['id'])
+                    clock_btn_x = self.width() - padding - delete_btn_size - 5 - clock_btn_size
+                    clock_btn_rect = QRect(clock_btn_x, (self.height() - clock_btn_size) // 2, clock_btn_size, clock_btn_size)
+                    if clock_btn_rect.contains(event.pos()):
+                        if not is_completed:
+                            self.show_deadline_dialog()
                         event.accept()
                         return
+                    else:
+                        delete_btn_rect = QRect(self.width() - padding - delete_btn_size, (self.height() - delete_btn_size) // 2, delete_btn_size, delete_btn_size)
+                        if delete_btn_rect.contains(event.pos()):
+                            self.main_window.delete_todo(self.todo['id'])
+                            event.accept()
+                            return
         
         super().mousePressEvent(event)
 
@@ -714,6 +1163,22 @@ class MainWindow(QWidget):
         ''')
         self.calendar_btn.clicked.connect(self.show_calendar)
         mode_layout.addWidget(self.calendar_btn)
+        
+        self.tag_manager_btn = QPushButton('🏷️ 标签管理')
+        self.tag_manager_btn.setStyleSheet('''
+            QPushButton {
+                padding: 8px 15px;
+                border-radius: 15px;
+                background-color: rgba(255, 215, 0, 0.6);
+                border: none;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 215, 0, 0.8);
+            }
+        ''')
+        self.tag_manager_btn.clicked.connect(self.show_tag_manager)
+        mode_layout.addWidget(self.tag_manager_btn)
         
         mode_layout.addStretch()
         
@@ -1262,6 +1727,11 @@ class MainWindow(QWidget):
                 background-color: rgba(180, 180, 255, 0.8);
             }
         ''')
+    
+    def show_tag_manager(self):
+        dialog = TagManagerDialog(self.config, self)
+        if dialog.exec_() == QDialog.Accepted:
+            self.refresh_todos()
     
     def on_calendar_clicked(self, qdate):
         self.current_date = qdate.toString('yyyy-MM-dd')
