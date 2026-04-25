@@ -4,7 +4,8 @@ from PyQt5.QtWidgets import (
     QLabel, QPushButton, QLineEdit, QListWidget, 
     QListWidgetItem, QCalendarWidget, QDialog, 
     QMessageBox, QScrollArea, QFrame, QSplitter,
-    QMenu, QTimeEdit, QDateEdit, QDateTimeEdit, QSpinBox
+    QMenu, QTimeEdit, QDateEdit, QDateTimeEdit, QSpinBox,
+    QGroupBox, QRadioButton, QCheckBox
 )
 from PyQt5.QtCore import Qt, QPoint, QDate, QPropertyAnimation, QRect, QSize, pyqtProperty, QTimer, QTime, QDateTime
 from PyQt5.QtGui import (
@@ -1441,17 +1442,20 @@ class TodoItem(QWidget):
     
     def show_repeat_dialog(self):
         """显示重复规则选择对话框"""
-        current_rule = self.todo.get('repeat_rule')
-        dialog = RepeatRulePickerDialog(current_rule, self)
-        
-        if dialog.exec_() == QDialog.Accepted:
-            new_rule = dialog.get_repeat_rule()
-            self.config.set_repeat_rule(self.date_str, self.todo['id'], new_rule)
-            if new_rule is not None:
-                self.todo['repeat_rule'] = new_rule
-            else:
-                self.todo.pop('repeat_rule', None)
-            self.update()
+        try:
+            current_rule = self.todo.get('repeat_rule')
+            dialog = RepeatRulePickerDialog(current_rule, self)
+            
+            if dialog.exec_() == QDialog.Accepted:
+                new_rule = dialog.get_repeat_rule()
+                self.config.set_repeat_rule(self.date_str, self.todo['id'], new_rule)
+                if new_rule is not None:
+                    self.todo['repeat_rule'] = new_rule
+                else:
+                    self.todo.pop('repeat_rule', None)
+                self.update()
+        except Exception as e:
+            QMessageBox.critical(self, '错误', f'发生错误: {str(e)}')
     
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
