@@ -442,13 +442,39 @@ class TagManagerDialog(QDialog):
         tag_id = current_item.data(Qt.UserRole)
         tag_name = current_item.text().replace('🏷️ ', '')
         
-        reply = QMessageBox.question(
-            self, '确认删除',
-            f'确定要删除标签 "{tag_name}" 吗？\n该操作会从所有待办事项中移除此标签。',
-            QMessageBox.Yes | QMessageBox.No
-        )
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle('确认删除')
+        msg_box.setText(f'确定要删除标签 "{tag_name}" 吗？')
+        msg_box.setInformativeText('该操作会从所有待办事项中移除此标签。')
+        msg_box.setIcon(QMessageBox.Question)
         
-        if reply == QMessageBox.Yes:
+        ok_btn = msg_box.addButton('确定', QMessageBox.AcceptRole)
+        cancel_btn = msg_box.addButton('取消', QMessageBox.RejectRole)
+        
+        msg_box.setStyleSheet('''
+            QMessageBox {
+                background-color: rgba(255, 248, 240, 0.98);
+            }
+            QMessageBox QLabel {
+                color: #5a4a3a;
+                font-size: 13px;
+            }
+            QMessageBox QPushButton {
+                padding: 8px 20px;
+                border-radius: 10px;
+                border: none;
+                font-size: 13px;
+                color: white;
+                background-color: rgba(100, 150, 255, 0.9);
+            }
+            QMessageBox QPushButton:hover {
+                background-color: rgba(80, 130, 255, 0.9);
+            }
+        ''')
+        
+        msg_box.exec_()
+        
+        if msg_box.clickedButton() == ok_btn:
             self.config.delete_tag(tag_id)
             self.refresh_tag_list()
 
@@ -1750,12 +1776,38 @@ class MainWindow(QWidget):
             self.refresh_todos()
     
     def delete_todo(self, todo_id):
-        reply = QMessageBox.question(
-            self, '确认删除',
-            '确定要删除这个待办事项吗？',
-            QMessageBox.Yes | QMessageBox.No
-        )
-        if reply == QMessageBox.Yes:
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle('确认删除')
+        msg_box.setText('确定要删除这个待办事项吗？')
+        msg_box.setIcon(QMessageBox.Question)
+        
+        ok_btn = msg_box.addButton('确定', QMessageBox.AcceptRole)
+        cancel_btn = msg_box.addButton('取消', QMessageBox.RejectRole)
+        
+        msg_box.setStyleSheet('''
+            QMessageBox {
+                background-color: rgba(255, 248, 240, 0.98);
+            }
+            QMessageBox QLabel {
+                color: #5a4a3a;
+                font-size: 13px;
+            }
+            QMessageBox QPushButton {
+                padding: 8px 20px;
+                border-radius: 10px;
+                border: none;
+                font-size: 13px;
+                color: white;
+                background-color: rgba(100, 150, 255, 0.9);
+            }
+            QMessageBox QPushButton:hover {
+                background-color: rgba(80, 130, 255, 0.9);
+            }
+        ''')
+        
+        msg_box.exec_()
+        
+        if msg_box.clickedButton() == ok_btn:
             self.config.delete_todo(self.current_date, todo_id)
             self.refresh_todos()
     
