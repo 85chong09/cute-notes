@@ -1008,11 +1008,8 @@ class RepeatRulePickerDialog(QDialog):
         
         self.weekdays_frame = QFrame()
         weekdays_layout = QHBoxLayout(self.weekdays_frame)
-        weekdays_layout.setContentsMargins(5, 10, 5, 10)
-        weekdays_layout.setSpacing(5)
-        
-        weekday_label = QLabel('选择星期:')
-        weekdays_layout.addWidget(weekday_label)
+        weekdays_layout.setContentsMargins(10, 10, 10, 10)
+        weekdays_layout.setSpacing(8)
         
         self.weekday_checkboxes = []
         weekdays = ['一', '二', '三', '四', '五', '六', '日']
