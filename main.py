@@ -886,7 +886,7 @@ class RepeatRulePickerDialog(QDialog):
     
     def init_ui(self):
         self.setWindowTitle('🔄 设置重复规则')
-        self.setFixedSize(400, 520)
+        self.setFixedSize(480, 550)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.setStyleSheet('''
             QDialog {
@@ -907,7 +907,9 @@ class RepeatRulePickerDialog(QDialog):
             QRadioButton {
                 color: #5a4a3a;
                 font-size: 13px;
-                padding: 5px;
+                padding: 8px 10px;
+                spacing: 10px;
+                min-height: 25px;
             }
             QRadioButton::indicator {
                 width: 18px;
@@ -963,6 +965,8 @@ class RepeatRulePickerDialog(QDialog):
         
         type_group = QGroupBox('重复类型')
         type_layout = QVBoxLayout(type_group)
+        type_layout.setContentsMargins(15, 20, 15, 15)
+        type_layout.setSpacing(8)
         
         self.daily_radio = QRadioButton('🔄 每天重复')
         self.weekly_radio = QRadioButton('📅 每周重复')
@@ -1022,6 +1026,8 @@ class RepeatRulePickerDialog(QDialog):
         
         end_date_group = QGroupBox('结束日期')
         end_date_layout = QVBoxLayout(end_date_group)
+        end_date_layout.setContentsMargins(15, 20, 15, 15)
+        end_date_layout.setSpacing(10)
         
         self.has_end_date = QCheckBox('设置结束日期')
         self.has_end_date.stateChanged.connect(self.on_end_date_toggled)
