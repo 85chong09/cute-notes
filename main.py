@@ -662,6 +662,152 @@ class TagPickerDialog(QDialog):
     def get_selected_tag_ids(self):
         return list(self.selected_tag_ids)
 
+class TagFilterDialog(QDialog):
+    def __init__(self, config, current_tag_ids=None, parent=None):
+        super().__init__(parent)
+        self.config = config
+        self.current_tag_ids = current_tag_ids if current_tag_ids else set()
+        self.selected_tag_ids = set(self.current_tag_ids)
+        self.setWindowTitle('🏷️ 筛选标签')
+        self.setFixedSize(350, 480)
+        self.setStyleSheet('''
+            QDialog {
+                background-color: rgba(255, 248, 240, 0.98);
+                border-radius: 15px;
+            }
+            QLabel {
+                color: #5a4a3a;
+                font-size: 13px;
+            }
+            QPushButton {
+                padding: 8px 15px;
+                border-radius: 10px;
+                border: none;
+                font-size: 13px;
+                color: white;
+            }
+            QListWidget {
+                border: 2px solid rgba(200, 180, 160, 0.3);
+                border-radius: 10px;
+                background-color: rgba(255, 255, 255, 0.8);
+            }
+            QListWidget::item {
+                padding: 10px;
+                border-bottom: 1px solid rgba(200, 180, 160, 0.2);
+            }
+        ''')
+        self.init_ui()
+    
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(25, 25, 25, 25)
+        layout.setSpacing(15)
+        
+        title_label = QLabel('选择要筛选的标签:')
+        title_label.setFont(QFont('Microsoft YaHei', 12, QFont.Bold))
+        layout.addWidget(title_label)
+        
+        hint_label = QLabel('提示：可选择多个标签，筛选结果将包含所有选中标签的待办事项')
+        hint_label.setStyleSheet('color: #888888; font-size: 11px;')
+        hint_label.setWordWrap(True)
+        layout.addWidget(hint_label)
+        
+        self.tag_list = QListWidget()
+        self.tag_list.setSelectionMode(QListWidget.NoSelection)
+        layout.addWidget(self.tag_list)
+        
+        btn_layout = QHBoxLayout()
+        
+        clear_btn = QPushButton('清除筛选')
+        clear_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(150, 150, 200, 0.9);
+            }
+            QPushButton:hover {
+                background-color: rgba(130, 130, 180, 0.9);
+            }
+        ''')
+        clear_btn.clicked.connect(self.clear_filter)
+        btn_layout.addWidget(clear_btn)
+        
+        btn_layout.addStretch()
+        
+        cancel_btn = QPushButton('取消')
+        cancel_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(200, 200, 200, 0.9);
+                color: #5a4a3a;
+            }
+            QPushButton:hover {
+                background-color: rgba(180, 180, 180, 0.9);
+            }
+        ''')
+        cancel_btn.clicked.connect(self.reject)
+        btn_layout.addWidget(cancel_btn)
+        
+        ok_btn = QPushButton('确定')
+        ok_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(100, 180, 100, 0.9);
+            }
+            QPushButton:hover {
+                background-color: rgba(80, 160, 80, 0.9);
+            }
+        ''')
+        ok_btn.clicked.connect(self.accept)
+        btn_layout.addWidget(ok_btn)
+        
+        layout.addLayout(btn_layout)
+        
+        self.refresh_tag_list()
+        self.tag_list.itemClicked.connect(self.toggle_tag)
+    
+    def refresh_tag_list(self):
+        self.tag_list.clear()
+        tags = self.config.get_all_tags()
+        
+        if not tags:
+            empty_label = QLabel('还没有标签，请先在标签管理中添加标签')
+            empty_label.setAlignment(Qt.AlignCenter)
+            empty_label.setStyleSheet('color: #9e9e9e; padding: 20px;')
+            list_item = QListWidgetItem(self.tag_list)
+            list_item.setSizeHint(empty_label.sizeHint())
+            self.tag_list.setItemWidget(list_item, empty_label)
+            return
+        
+        for tag in tags:
+            is_selected = tag['id'] in self.selected_tag_ids
+            checkbox_text = f'✓ {tag["name"]}' if is_selected else f'○ {tag["name"]}'
+            item = QListWidgetItem(checkbox_text)
+            item.setData(Qt.UserRole, tag['id'])
+            item.setData(Qt.UserRole + 1, tag['name'])
+            
+            if is_selected:
+                item.setBackground(QColor(255, 215, 0, 100))
+            
+            self.tag_list.addItem(item)
+    
+    def toggle_tag(self, item):
+        tag_id = item.data(Qt.UserRole)
+        tag_name = item.data(Qt.UserRole + 1)
+        
+        if tag_id in self.selected_tag_ids:
+            self.selected_tag_ids.remove(tag_id)
+            item.setText(f'○ {tag_name}')
+            item.setBackground(QColor(255, 255, 255, 0))
+        else:
+            self.selected_tag_ids.add(tag_id)
+            item.setText(f'✓ {tag_name}')
+            item.setBackground(QColor(255, 215, 0, 100))
+    
+    def clear_filter(self):
+        """清除所有筛选标签"""
+        self.selected_tag_ids = set()
+        self.refresh_tag_list()
+    
+    def get_selected_tag_ids(self):
+        return self.selected_tag_ids
+
 class LockIconWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -993,10 +1139,10 @@ class TodoItem(QWidget):
         super().mousePressEvent(event)
 
 class SearchResultItem(QWidget):
-    def __init__(self, date_str, todo_text, main_window, parent=None):
+    def __init__(self, date_str, todo, main_window, parent=None):
         super().__init__(parent)
         self.date_str = date_str
-        self.todo_text = todo_text
+        self.todo = todo
         self.main_window = main_window
         self.setCursor(Qt.PointingHandCursor)
         
@@ -1019,12 +1165,35 @@ class SearchResultItem(QWidget):
         self.date_label.setStyleSheet(f'color: {date_color};')
         layout.addWidget(self.date_label)
         
-        self.todo_label = QLabel(todo_text)
+        self.todo_label = QLabel(todo.get('text', ''))
         self.todo_label.setFont(QFont('Microsoft YaHei', 12))
         self.todo_label.setStyleSheet(f'color: {text_color};')
         self.todo_label.setWordWrap(True)
         self.todo_label.setMinimumHeight(20)
         layout.addWidget(self.todo_label)
+        
+        tag_ids = todo.get('tag_ids', [])
+        if tag_ids:
+            tag_layout = QHBoxLayout()
+            tag_layout.setSpacing(5)
+            
+            for tag_id in tag_ids:
+                tag = self.main_window.config.get_tag(tag_id)
+                if tag:
+                    tag_label = QLabel(f'🏷️ {tag["name"]}')
+                    tag_label.setFont(QFont('Microsoft YaHei', 9))
+                    tag_label.setStyleSheet('''
+                        QLabel {
+                            background-color: rgba(255, 215, 0, 0.8);
+                            color: #5a4a3a;
+                            padding: 2px 8px;
+                            border-radius: 10px;
+                        }
+                    ''')
+                    tag_layout.addWidget(tag_label)
+            
+            tag_layout.addStretch()
+            layout.addLayout(tag_layout)
         
         self.setMinimumHeight(70)
         self.adjustSize()
@@ -1084,6 +1253,7 @@ class MainWindow(QWidget):
         self.urgent_count = 0
         self.urgent_timer = QTimer()
         self.urgent_timer.timeout.connect(self.update_urgent_badge)
+        self.selected_filter_tag_ids = set()
         self.init_ui()
         self.urgent_timer.start(60000)
         self.update_urgent_badge()
@@ -1211,6 +1381,23 @@ class MainWindow(QWidget):
         ''')
         self.search_input.textChanged.connect(self.search_todos)
         search_layout.addWidget(self.search_input)
+        
+        self.tag_filter_btn = QPushButton('🏷️ 筛选')
+        self.tag_filter_btn.setFixedSize(70, 32)
+        self.tag_filter_btn.setStyleSheet('''
+            QPushButton {
+                padding: 5px 10px;
+                border-radius: 15px;
+                background-color: rgba(255, 215, 0, 0.6);
+                border: none;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 215, 0, 0.8);
+            }
+        ''')
+        self.tag_filter_btn.clicked.connect(self.show_tag_filter_dialog)
+        search_layout.addWidget(self.tag_filter_btn)
         
         self.expanded_layout.addWidget(search_frame)
         
@@ -1827,6 +2014,8 @@ class MainWindow(QWidget):
     def go_to_date(self, date_str):
         self.current_date = date_str
         self.search_input.clear()
+        self.selected_filter_tag_ids = set()
+        self._update_tag_filter_button()
         self.show_todo_list()
     
     def add_new_todo(self):
@@ -1901,8 +2090,11 @@ class MainWindow(QWidget):
             self.config.delete_todo(self.current_date, todo_id)
             self.refresh_todos()
     
-    def search_todos(self, keyword):
-        if not keyword.strip():
+    def search_todos(self, keyword=None):
+        has_keyword = keyword is not None and keyword.strip()
+        has_tags = bool(self.selected_filter_tag_ids)
+        
+        if not has_keyword and not has_tags:
             self.refresh_todos()
             return
         
@@ -1910,14 +2102,17 @@ class MainWindow(QWidget):
             self.todo_list_widget.show()
             self.calendar_widget.hide()
         
-        results = self.config.search_todos(keyword)
+        search_keyword = keyword if has_keyword else None
+        search_tag_ids = list(self.selected_filter_tag_ids) if has_tags else None
+        
+        results = self.config.search_todos(search_keyword, search_tag_ids)
         self.todo_list.clear()
         
         if results:
             for result in results:
                 result_widget = SearchResultItem(
                     result['date'],
-                    result['todo']['text'],
+                    result['todo'],
                     self
                 )
                 
@@ -1937,6 +2132,58 @@ class MainWindow(QWidget):
             list_item = QListWidgetItem(self.todo_list)
             list_item.setSizeHint(empty_label.sizeHint())
             self.todo_list.setItemWidget(list_item, empty_label)
+    
+    def show_tag_filter_dialog(self):
+        """显示标签筛选对话框"""
+        dialog = TagFilterDialog(self.config, self.selected_filter_tag_ids, self)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            selected_tag_ids = dialog.get_selected_tag_ids()
+            self.selected_filter_tag_ids = selected_tag_ids
+            self._update_tag_filter_button()
+            self.search_todos(self.search_input.text())
+    
+    def _update_tag_filter_button(self):
+        """更新标签筛选按钮的显示"""
+        if self.selected_filter_tag_ids:
+            tag_names = []
+            for tag_id in self.selected_filter_tag_ids:
+                tag = self.config.get_tag(tag_id)
+                if tag:
+                    tag_names.append(tag['name'])
+            
+            if len(tag_names) > 2:
+                display_text = f'🏷️ {len(tag_names)}个标签'
+            else:
+                display_text = f'🏷️ {",".join(tag_names)}'
+            
+            self.tag_filter_btn.setText(display_text)
+            self.tag_filter_btn.setStyleSheet('''
+                QPushButton {
+                    padding: 5px 10px;
+                    border-radius: 15px;
+                    background-color: rgba(255, 215, 0, 0.9);
+                    border: 2px solid rgba(255, 180, 0, 0.8);
+                    font-size: 12px;
+                }
+                QPushButton:hover {
+                    background-color: rgba(255, 215, 0, 1);
+                }
+            ''')
+        else:
+            self.tag_filter_btn.setText('🏷️ 筛选')
+            self.tag_filter_btn.setStyleSheet('''
+                QPushButton {
+                    padding: 5px 10px;
+                    border-radius: 15px;
+                    background-color: rgba(255, 215, 0, 0.6);
+                    border: none;
+                    font-size: 12px;
+                }
+                QPushButton:hover {
+                    background-color: rgba(255, 215, 0, 0.8);
+                }
+            ''')
     
     def toggle_lock(self):
         if self.config.config.get('is_locked', False):

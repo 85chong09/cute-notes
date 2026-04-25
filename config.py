@@ -97,16 +97,34 @@ class ConfigManager:
                     return True
         return False
     
-    def search_todos(self, keyword):
+    def search_todos(self, keyword=None, tag_ids=None):
+        """
+        搜索待办事项
+        :param keyword: 文本搜索关键词，为None时不进行文本过滤
+        :param tag_ids: 标签ID列表，为None或空列表时不进行标签过滤
+        :return: 匹配的待办事项列表
+        """
         results = []
         todos_dict = self.data.get('todos', {})
+        
         for date_str, todos in todos_dict.items():
             for todo in todos:
-                if keyword.lower() in todo['text'].lower():
+                text_match = True
+                tag_match = True
+                
+                if keyword is not None:
+                    text_match = keyword.lower() in todo['text'].lower()
+                
+                if tag_ids:
+                    todo_tag_ids = todo.get('tag_ids', [])
+                    tag_match = all(tag_id in todo_tag_ids for tag_id in tag_ids)
+                
+                if text_match and tag_match:
                     results.append({
                         'date': date_str,
                         'todo': todo
                     })
+        
         return results
     
     def get_all_tags(self):

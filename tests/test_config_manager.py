@@ -713,6 +713,129 @@ class TestConfigManager(unittest.TestCase):
         
         self.assertTrue(result)
         self.assertIsNone(self.config_manager.data['2024-01-01'][0]['deadline'])
+    
+    # ==================== 标签筛选功能测试 ====================
+    
+    def test_search_todos_by_single_tag(self):
+        """测试按单个标签筛选待办事项"""
+        tag1 = self.config_manager.add_tag('工作')
+        tag2 = self.config_manager.add_tag('个人')
+        
+        self.config_manager.add_todo('2024-01-01', '工作任务1', tag_ids=[tag1['id']])
+        self.config_manager.add_todo('2024-01-01', '个人任务1', tag_ids=[tag2['id']])
+        self.config_manager.add_todo('2024-01-01', '无标签任务')
+        
+        results = self.config_manager.search_todos(tag_ids=[tag1['id']])
+        
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['todo']['text'], '工作任务1')
+    
+    def test_search_todos_by_multiple_tags(self):
+        """测试按多个标签筛选待办事项（AND逻辑）"""
+        tag1 = self.config_manager.add_tag('工作')
+        tag2 = self.config_manager.add_tag('紧急')
+        tag3 = self.config_manager.add_tag('个人')
+        
+        self.config_manager.add_todo('2024-01-01', '紧急工作任务', tag_ids=[tag1['id'], tag2['id']])
+        self.config_manager.add_todo('2024-01-01', '普通工作任务', tag_ids=[tag1['id']])
+        self.config_manager.add_todo('2024-01-01', '紧急个人任务', tag_ids=[tag2['id'], tag3['id']])
+        
+        results = self.config_manager.search_todos(tag_ids=[tag1['id'], tag2['id']])
+        
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['todo']['text'], '紧急工作任务')
+    
+    def test_search_todos_by_text_and_tags(self):
+        """测试同时按文本和标签筛选待办事项"""
+        tag1 = self.config_manager.add_tag('工作')
+        tag2 = self.config_manager.add_tag('个人')
+        
+        self.config_manager.add_todo('2024-01-01', '写报告', tag_ids=[tag1['id']])
+        self.config_manager.add_todo('2024-01-01', '写代码', tag_ids=[tag1['id']])
+        self.config_manager.add_todo('2024-01-01', '写日记', tag_ids=[tag2['id']])
+        
+        results = self.config_manager.search_todos(keyword='写', tag_ids=[tag1['id']])
+        
+        self.assertEqual(len(results), 2)
+        result_texts = [r['todo']['text'] for r in results]
+        self.assertIn('写报告', result_texts)
+        self.assertIn('写代码', result_texts)
+        self.assertNotIn('写日记', result_texts)
+    
+    def test_search_todos_without_keyword_only_tags(self):
+        """测试不使用关键词，只使用标签筛选"""
+        tag1 = self.config_manager.add_tag('重要')
+        
+        self.config_manager.add_todo('2024-01-01', '重要任务1', tag_ids=[tag1['id']])
+        self.config_manager.add_todo('2024-01-01', '重要任务2', tag_ids=[tag1['id']])
+        self.config_manager.add_todo('2024-01-01', '普通任务')
+        
+        results = self.config_manager.search_todos(tag_ids=[tag1['id']])
+        
+        self.assertEqual(len(results), 2)
+    
+    def test_search_todos_without_tags_only_keyword(self):
+        """测试不使用标签，只使用关键词筛选（保持原功能）"""
+        self.config_manager.add_todo('2024-01-01', '购买牛奶')
+        self.config_manager.add_todo('2024-01-01', '写代码')
+        self.config_manager.add_todo('2024-01-02', '购买水果')
+        
+        results = self.config_manager.search_todos(keyword='购买')
+        
+        self.assertEqual(len(results), 2)
+    
+    def test_search_todos_with_none_params(self):
+        """测试所有参数都为None时返回所有待办事项"""
+        self.config_manager.add_todo('2024-01-01', '任务1')
+        self.config_manager.add_todo('2024-01-01', '任务2')
+        
+        results = self.config_manager.search_todos(keyword=None, tag_ids=None)
+        
+        self.assertEqual(len(results), 2)
+    
+    def test_search_todos_with_empty_tag_ids(self):
+        """测试空标签列表时不进行标签筛选"""
+        tag1 = self.config_manager.add_tag('测试')
+        
+        self.config_manager.add_todo('2024-01-01', '带标签任务', tag_ids=[tag1['id']])
+        self.config_manager.add_todo('2024-01-01', '不带标签任务')
+        
+        results = self.config_manager.search_todos(tag_ids=[])
+        
+        self.assertEqual(len(results), 2)
+    
+    def test_search_todos_non_existent_tag(self):
+        """测试使用不存在的标签ID筛选"""
+        self.config_manager.add_todo('2024-01-01', '测试任务')
+        
+        results = self.config_manager.search_todos(tag_ids=[999])
+        
+        self.assertEqual(len(results), 0)
+    
+    def test_add_todo_with_tag_ids(self):
+        """测试添加带标签的待办事项"""
+        tag = self.config_manager.add_tag('测试标签')
+        
+        todo = self.config_manager.add_todo('2024-01-01', '测试任务', tag_ids=[tag['id']])
+        
+        self.assertEqual(todo['tag_ids'], [tag['id']])
+        todos = self.config_manager.get_todos('2024-01-01')
+        self.assertEqual(todos[0]['tag_ids'], [tag['id']])
+    
+    def test_update_todo_tag_ids(self):
+        """测试更新待办事项的标签"""
+        tag1 = self.config_manager.add_tag('标签1')
+        tag2 = self.config_manager.add_tag('标签2')
+        
+        todo = self.config_manager.add_todo('2024-01-01', '测试任务', tag_ids=[tag1['id']])
+        
+        result = self.config_manager.update_todo('2024-01-01', todo['id'], tag_ids=[tag1['id'], tag2['id']])
+        
+        self.assertTrue(result)
+        todos = self.config_manager.get_todos('2024-01-01')
+        updated_todo = todos[0]
+        self.assertIn(tag1['id'], updated_todo['tag_ids'])
+        self.assertIn(tag2['id'], updated_todo['tag_ids'])
 
 
 if __name__ == '__main__':
