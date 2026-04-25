@@ -670,6 +670,7 @@ class TagFilterDialog(QDialog):
         self.selected_tag_ids = set(self.current_tag_ids)
         self.setWindowTitle('🏷️ 筛选标签')
         self.setFixedSize(350, 480)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.setStyleSheet('''
             QDialog {
                 background-color: rgba(255, 248, 240, 0.98);
@@ -2146,18 +2147,7 @@ class MainWindow(QWidget):
     def _update_tag_filter_button(self):
         """更新标签筛选按钮的显示"""
         if self.selected_filter_tag_ids:
-            tag_names = []
-            for tag_id in self.selected_filter_tag_ids:
-                tag = self.config.get_tag(tag_id)
-                if tag:
-                    tag_names.append(tag['name'])
-            
-            if len(tag_names) > 2:
-                display_text = f'🏷️ {len(tag_names)}个标签'
-            else:
-                display_text = f'🏷️ {",".join(tag_names)}'
-            
-            self.tag_filter_btn.setText(display_text)
+            self.tag_filter_btn.setText('🏷️ 筛选')
             self.tag_filter_btn.setStyleSheet('''
                 QPushButton {
                     padding: 5px 10px;
