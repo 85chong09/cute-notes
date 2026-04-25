@@ -213,11 +213,12 @@ class TagManagerDialog(QDialog):
                 font-size: 13px;
             }
             QLineEdit {
-                padding: 10px;
+                padding: 5px 10px;
                 border-radius: 10px;
                 border: 2px solid rgba(255, 200, 150, 0.5);
                 background-color: white;
                 font-size: 14px;
+                min-height: 25px;
             }
             QPushButton {
                 padding: 8px 15px;
@@ -319,6 +320,20 @@ class TagManagerDialog(QDialog):
         
         self.refresh_tag_list()
     
+    def helpEvent(self, event):
+        help_text = '''
+📝 标签管理帮助：
+
+• 添加标签：在输入框中输入标签名称，点击"添加"按钮
+• 修改标签：选中列表中的标签，点击"修改"按钮
+• 删除标签：选中列表中的标签，点击"删除"按钮
+• 使用标签：在添加或编辑待办事项时，可以为其选择标签
+
+标签可以帮助您更好地分类和管理待办事项！
+        '''
+        QMessageBox.information(self, '标签管理帮助', help_text.strip())
+        return True
+    
     def refresh_tag_list(self):
         self.tag_list.clear()
         tags = self.config.get_all_tags()
@@ -365,11 +380,12 @@ class TagManagerDialog(QDialog):
                 font-size: 13px;
             }
             QLineEdit {
-                padding: 10px;
+                padding: 5px 10px;
                 border-radius: 10px;
                 border: 2px solid rgba(255, 200, 150, 0.5);
                 background-color: white;
                 font-size: 14px;
+                min-height: 25px;
             }
             QPushButton {
                 padding: 8px 15px;
@@ -2289,6 +2305,7 @@ class MainWindow(QWidget):
         if not todos:
             empty_label = QLabel('✨ 今天还没有待办事项哦~')
             empty_label.setAlignment(Qt.AlignCenter)
+            empty_label.setMinimumHeight(60)
             empty_label.setStyleSheet('''
                 QLabel {
                     color: #9e9e9e;
@@ -2297,7 +2314,7 @@ class MainWindow(QWidget):
                 }
             ''')
             list_item = QListWidgetItem(self.todo_list)
-            list_item.setSizeHint(empty_label.sizeHint())
+            list_item.setSizeHint(QSize(self.todo_list.viewport().width(), 60))
             self.todo_list.setItemWidget(list_item, empty_label)
     
     def show_urgent_todos(self):
