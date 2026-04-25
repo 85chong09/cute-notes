@@ -875,6 +875,324 @@ class CustomCalendarWidget(QCalendarWidget):
         
         painter.restore()
 
+class RepeatRulePickerDialog(QDialog):
+    def __init__(self, current_rule=None, parent=None):
+        super().__init__(parent)
+        self.current_rule = current_rule if current_rule else {}
+        self.selected_rule = None
+        self.selected_weekdays = set()
+        self.init_ui()
+    
+    def init_ui(self):
+        self.setWindowTitle('🔄 设置重复规则')
+        self.setFixedSize(400, 520)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+        self.setStyleSheet('''
+            QDialog {
+                background-color: rgba(255, 248, 240, 0.98);
+                border-radius: 15px;
+            }
+            QLabel {
+                color: #5a4a3a;
+                font-size: 13px;
+            }
+            QPushButton {
+                padding: 8px 15px;
+                border-radius: 10px;
+                border: none;
+                font-size: 13px;
+                color: white;
+            }
+            QRadioButton {
+                color: #5a4a3a;
+                font-size: 13px;
+                padding: 5px;
+            }
+            QRadioButton::indicator {
+                width: 18px;
+                height: 18px;
+            }
+            QCheckBox {
+                color: #5a4a3a;
+                font-size: 12px;
+                padding: 5px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+            }
+            QSpinBox {
+                padding: 8px;
+                border-radius: 8px;
+                border: 2px solid rgba(255, 200, 150, 0.5);
+                background-color: white;
+                font-size: 13px;
+            }
+            QDateEdit {
+                padding: 8px;
+                border-radius: 8px;
+                border: 2px solid rgba(255, 200, 150, 0.5);
+                background-color: white;
+                font-size: 13px;
+                calendar-popup: true;
+            }
+            QGroupBox {
+                color: #5a4a3a;
+                font-size: 13px;
+                font-weight: bold;
+                border: 2px solid rgba(255, 200, 150, 0.3);
+                border-radius: 10px;
+                margin-top: 15px;
+                padding-top: 15px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 10px;
+            }
+        ''')
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(25, 25, 25, 25)
+        layout.setSpacing(15)
+        
+        title_label = QLabel('选择重复规则:')
+        title_label.setFont(QFont('Microsoft YaHei', 12, QFont.Bold))
+        layout.addWidget(title_label)
+        
+        type_group = QGroupBox('重复类型')
+        type_layout = QVBoxLayout(type_group)
+        
+        self.daily_radio = QRadioButton('🔄 每天重复')
+        self.weekly_radio = QRadioButton('📅 每周重复')
+        self.monthly_radio = QRadioButton('📆 每月重复')
+        self.yearly_radio = QRadioButton('🎂 每年重复')
+        self.weekdays_radio = QRadioButton('💼 工作日（周一至周五）')
+        self.weekends_radio = QRadioButton('🎉 周末（周六、周日）')
+        
+        type_layout.addWidget(self.daily_radio)
+        type_layout.addWidget(self.weekly_radio)
+        type_layout.addWidget(self.monthly_radio)
+        type_layout.addWidget(self.yearly_radio)
+        type_layout.addWidget(self.weekdays_radio)
+        type_layout.addWidget(self.weekends_radio)
+        
+        layout.addWidget(type_group)
+        
+        self.interval_frame = QFrame()
+        interval_layout = QHBoxLayout(self.interval_frame)
+        interval_layout.setContentsMargins(0, 0, 0, 0)
+        
+        interval_label = QLabel('每')
+        interval_layout.addWidget(interval_label)
+        
+        self.interval_spin = QSpinBox()
+        self.interval_spin.setMinimum(1)
+        self.interval_spin.setMaximum(999)
+        self.interval_spin.setValue(1)
+        interval_layout.addWidget(self.interval_spin)
+        
+        self.interval_unit_label = QLabel('天')
+        interval_layout.addWidget(self.interval_unit_label)
+        
+        interval_layout.addStretch()
+        
+        layout.addWidget(self.interval_frame)
+        
+        self.weekdays_frame = QFrame()
+        weekdays_layout = QHBoxLayout(self.weekdays_frame)
+        weekdays_layout.setContentsMargins(0, 0, 0, 0)
+        
+        weekday_label = QLabel('选择星期:')
+        weekdays_layout.addWidget(weekday_label)
+        
+        self.weekday_checkboxes = []
+        weekdays = ['一', '二', '三', '四', '五', '六', '日']
+        for i, day in enumerate(weekdays):
+            cb = QCheckBox(f'周{day}')
+            cb.setProperty('weekday', i)
+            cb.stateChanged.connect(self.on_weekday_changed)
+            self.weekday_checkboxes.append(cb)
+            weekdays_layout.addWidget(cb)
+        
+        weekdays_layout.addStretch()
+        layout.addWidget(self.weekdays_frame)
+        self.weekdays_frame.hide()
+        
+        end_date_group = QGroupBox('结束日期')
+        end_date_layout = QVBoxLayout(end_date_group)
+        
+        self.has_end_date = QCheckBox('设置结束日期')
+        self.has_end_date.stateChanged.connect(self.on_end_date_toggled)
+        end_date_layout.addWidget(self.has_end_date)
+        
+        end_date_sub_layout = QHBoxLayout()
+        end_date_sub_label = QLabel('结束于:')
+        end_date_sub_layout.addWidget(end_date_sub_label)
+        
+        self.end_date_edit = QDateEdit()
+        self.end_date_edit.setCalendarPopup(True)
+        self.end_date_edit.setDisplayFormat('yyyy-MM-dd')
+        self.end_date_edit.setMinimumDate(QDate.currentDate().addDays(1))
+        self.end_date_edit.setDate(QDate.currentDate().addDays(30))
+        self.end_date_edit.setEnabled(False)
+        end_date_sub_layout.addWidget(self.end_date_edit)
+        end_date_sub_layout.addStretch()
+        
+        end_date_layout.addLayout(end_date_sub_layout)
+        layout.addWidget(end_date_group)
+        
+        self.daily_radio.toggled.connect(lambda: self.on_type_changed('daily'))
+        self.weekly_radio.toggled.connect(lambda: self.on_type_changed('weekly'))
+        self.monthly_radio.toggled.connect(lambda: self.on_type_changed('monthly'))
+        self.yearly_radio.toggled.connect(lambda: self.on_type_changed('yearly'))
+        self.weekdays_radio.toggled.connect(lambda: self.on_type_changed('weekdays'))
+        self.weekends_radio.toggled.connect(lambda: self.on_type_changed('weekends'))
+        
+        btn_layout = QHBoxLayout()
+        
+        self.clear_btn = QPushButton('清除重复')
+        self.clear_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(200, 150, 150, 0.9);
+            }
+            QPushButton:hover {
+                background-color: rgba(180, 130, 130, 0.9);
+            }
+        ''')
+        self.clear_btn.clicked.connect(self.clear_repeat)
+        btn_layout.addWidget(self.clear_btn)
+        
+        btn_layout.addStretch()
+        
+        cancel_btn = QPushButton('取消')
+        cancel_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(200, 200, 200, 0.9);
+                color: #5a4a3a;
+            }
+            QPushButton:hover {
+                background-color: rgba(180, 180, 180, 0.9);
+            }
+        ''')
+        cancel_btn.clicked.connect(self.reject)
+        btn_layout.addWidget(cancel_btn)
+        
+        ok_btn = QPushButton('确定')
+        ok_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(100, 180, 100, 0.9);
+            }
+            QPushButton:hover {
+                background-color: rgba(80, 160, 80, 0.9);
+            }
+        ''')
+        ok_btn.clicked.connect(self.accept_rule)
+        btn_layout.addWidget(ok_btn)
+        
+        layout.addLayout(btn_layout)
+        
+        self.load_current_rule()
+    
+    def load_current_rule(self):
+        if not self.current_rule:
+            self.daily_radio.setChecked(True)
+            return
+        
+        repeat_type = self.current_rule.get('type', 'daily')
+        interval = self.current_rule.get('interval', 1)
+        weekdays = self.current_rule.get('weekdays', [])
+        end_date = self.current_rule.get('end_date')
+        
+        self.interval_spin.setValue(interval)
+        
+        if weekdays:
+            self.selected_weekdays = set(weekdays)
+            for cb in self.weekday_checkboxes:
+                cb.setChecked(cb.property('weekday') in self.selected_weekdays)
+        
+        if end_date:
+            self.has_end_date.setChecked(True)
+            qdate = QDate.fromString(end_date, 'yyyy-MM-dd')
+            if qdate.isValid():
+                self.end_date_edit.setDate(qdate)
+        
+        if repeat_type == 'daily':
+            self.daily_radio.setChecked(True)
+        elif repeat_type == 'weekly':
+            self.weekly_radio.setChecked(True)
+        elif repeat_type == 'monthly':
+            self.monthly_radio.setChecked(True)
+        elif repeat_type == 'yearly':
+            self.yearly_radio.setChecked(True)
+        elif repeat_type == 'weekdays':
+            self.weekdays_radio.setChecked(True)
+        elif repeat_type == 'weekends':
+            self.weekends_radio.setChecked(True)
+    
+    def on_type_changed(self, repeat_type):
+        units = {
+            'daily': '天',
+            'weekly': '周',
+            'monthly': '月',
+            'yearly': '年',
+            'weekdays': '天',
+            'weekends': '天'
+        }
+        self.interval_unit_label.setText(units.get(repeat_type, '天'))
+        
+        if repeat_type == 'weekly':
+            self.weekdays_frame.show()
+        else:
+            self.weekdays_frame.hide()
+    
+    def on_weekday_changed(self, state):
+        checkbox = self.sender()
+        weekday = checkbox.property('weekday')
+        if state == Qt.Checked:
+            self.selected_weekdays.add(weekday)
+        else:
+            self.selected_weekdays.discard(weekday)
+    
+    def on_end_date_toggled(self, state):
+        self.end_date_edit.setEnabled(state == Qt.Checked)
+    
+    def clear_repeat(self):
+        self.selected_rule = None
+        self.accept()
+    
+    def accept_rule(self):
+        repeat_type = None
+        if self.daily_radio.isChecked():
+            repeat_type = 'daily'
+        elif self.weekly_radio.isChecked():
+            repeat_type = 'weekly'
+        elif self.monthly_radio.isChecked():
+            repeat_type = 'monthly'
+        elif self.yearly_radio.isChecked():
+            repeat_type = 'yearly'
+        elif self.weekdays_radio.isChecked():
+            repeat_type = 'weekdays'
+        elif self.weekends_radio.isChecked():
+            repeat_type = 'weekends'
+        
+        if repeat_type == 'weekly' and not self.selected_weekdays:
+            QMessageBox.warning(self, '提示', '请至少选择一个星期几！')
+            return
+        
+        self.selected_rule = {
+            'type': repeat_type,
+            'interval': self.interval_spin.value(),
+            'weekdays': list(self.selected_weekdays) if repeat_type == 'weekly' else [],
+            'end_date': self.end_date_edit.date().toString('yyyy-MM-dd') if self.has_end_date.isChecked() else None,
+            'last_generated': None
+        }
+        
+        self.accept()
+    
+    def get_repeat_rule(self):
+        return self.selected_rule
+
 class TodoItem(QWidget):
     def __init__(self, todo_item, date_str, config, main_window, parent=None):
         super().__init__(parent)
@@ -961,8 +1279,9 @@ class TodoItem(QWidget):
         delete_btn_size = 20
         clock_btn_size = 24
         tag_btn_size = 24
+        repeat_btn_size = 24
         text_left = padding + circle_size + 10
-        text_right = self.width() - padding - delete_btn_size - 10 - clock_btn_size - 5 - tag_btn_size - 5
+        text_right = self.width() - padding - delete_btn_size - 10 - clock_btn_size - 5 - tag_btn_size - 5 - repeat_btn_size - 5
         vertical_padding = 28
         
         tag_ids = self.todo.get('tag_ids', [])
@@ -1071,6 +1390,23 @@ class TodoItem(QWidget):
                 painter.drawLine(center_x, center_y, center_x, center_y - hour_length)
                 painter.drawLine(center_x, center_y, center_x + minute_length, center_y)
         
+        repeat_btn_x = self.width() - padding - delete_btn_size - 5 - repeat_btn_size
+        repeat_btn_rect = QRect(repeat_btn_x, (self.height() - repeat_btn_size) // 2, repeat_btn_size, repeat_btn_size)
+        
+        has_repeat = self.todo.get('repeat_rule') is not None
+        if has_repeat:
+            repeat_color = QColor(100, 180, 255)
+        else:
+            repeat_color = QColor(200, 200, 200)
+        
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(repeat_color))
+        painter.drawEllipse(repeat_btn_rect)
+        
+        painter.setPen(QPen(QColor(255, 255, 255), 2))
+        painter.setFont(QFont('Microsoft YaHei', 12))
+        painter.drawText(repeat_btn_rect, Qt.AlignCenter, '🔄')
+        
         delete_btn_rect = QRect(self.width() - padding - delete_btn_size, (self.height() - delete_btn_size) // 2, delete_btn_size, delete_btn_size)
         painter.setPen(Qt.NoPen)
         painter.setBrush(QBrush(QColor(255, 100, 100)))
@@ -1101,6 +1437,20 @@ class TodoItem(QWidget):
             self.config.update_todo(self.date_str, self.todo['id'], tag_ids=selected_tag_ids)
             self.update()
     
+    def show_repeat_dialog(self):
+        """显示重复规则选择对话框"""
+        current_rule = self.todo.get('repeat_rule')
+        dialog = RepeatRulePickerDialog(current_rule, self)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            new_rule = dialog.get_repeat_rule()
+            self.config.set_repeat_rule(self.date_str, self.todo['id'], new_rule)
+            if new_rule is not None:
+                self.todo['repeat_rule'] = new_rule
+            else:
+                self.todo.pop('repeat_rule', None)
+            self.update()
+    
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             padding = 12
@@ -1108,6 +1458,7 @@ class TodoItem(QWidget):
             delete_btn_size = 20
             clock_btn_size = 24
             tag_btn_size = 24
+            repeat_btn_size = 24
             is_completed = self.todo.get('completed', False)
             
             circle_rect = QRect(padding, (self.height() - circle_size) // 2, circle_size, circle_size)
@@ -1116,14 +1467,14 @@ class TodoItem(QWidget):
                 event.accept()
                 return
             else:
-                tag_btn_x = self.width() - padding - delete_btn_size - 5 - clock_btn_size - 5 - tag_btn_size
+                tag_btn_x = self.width() - padding - delete_btn_size - 5 - repeat_btn_size - 5 - clock_btn_size - 5 - tag_btn_size
                 tag_btn_rect = QRect(tag_btn_x, (self.height() - tag_btn_size) // 2, tag_btn_size, tag_btn_size)
                 if tag_btn_rect.contains(event.pos()):
                     self.show_tag_picker_dialog()
                     event.accept()
                     return
                 else:
-                    clock_btn_x = self.width() - padding - delete_btn_size - 5 - clock_btn_size
+                    clock_btn_x = self.width() - padding - delete_btn_size - 5 - repeat_btn_size - 5 - clock_btn_size
                     clock_btn_rect = QRect(clock_btn_x, (self.height() - clock_btn_size) // 2, clock_btn_size, clock_btn_size)
                     if clock_btn_rect.contains(event.pos()):
                         if not is_completed:
@@ -1131,11 +1482,18 @@ class TodoItem(QWidget):
                         event.accept()
                         return
                     else:
-                        delete_btn_rect = QRect(self.width() - padding - delete_btn_size, (self.height() - delete_btn_size) // 2, delete_btn_size, delete_btn_size)
-                        if delete_btn_rect.contains(event.pos()):
-                            self.main_window.delete_todo(self.todo['id'])
+                        repeat_btn_x = self.width() - padding - delete_btn_size - 5 - repeat_btn_size
+                        repeat_btn_rect = QRect(repeat_btn_x, (self.height() - repeat_btn_size) // 2, repeat_btn_size, repeat_btn_size)
+                        if repeat_btn_rect.contains(event.pos()):
+                            self.show_repeat_dialog()
                             event.accept()
                             return
+                        else:
+                            delete_btn_rect = QRect(self.width() - padding - delete_btn_size, (self.height() - delete_btn_size) // 2, delete_btn_size, delete_btn_size)
+                            if delete_btn_rect.contains(event.pos()):
+                                self.main_window.delete_todo(self.todo['id'])
+                                event.accept()
+                                return
         
         super().mousePressEvent(event)
 
@@ -1258,6 +1616,7 @@ class MainWindow(QWidget):
         self.init_ui()
         self.urgent_timer.start(60000)
         self.update_urgent_badge()
+        self._generate_repeat_todos()
     
     def init_ui(self):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
@@ -2514,6 +2873,12 @@ class MainWindow(QWidget):
                 background-color: rgba(80, 160, 255, 0.9);
             }}
         ''')
+    
+    def _generate_repeat_todos(self):
+        """生成重复待办事项"""
+        generated_count = self.config.generate_repeat_todos()
+        if generated_count > 0:
+            self.refresh_todos()
     
     def showEvent(self, event):
         super().showEvent(event)

@@ -60,7 +60,7 @@ class ConfigManager:
     def get_todos(self, date_str):
         return self.data.get('todos', {}).get(date_str, [])
     
-    def add_todo(self, date_str, todo_text, deadline=None, tag_ids=None):
+    def add_todo(self, date_str, todo_text, deadline=None, tag_ids=None, repeat_rule=None):
         if 'todos' not in self.data:
             self.data['todos'] = {}
         if date_str not in self.data['todos']:
@@ -71,7 +71,8 @@ class ConfigManager:
             'completed': False,
             'created_at': datetime.now().isoformat(),
             'deadline': deadline,
-            'tag_ids': tag_ids if tag_ids else []
+            'tag_ids': tag_ids if tag_ids else [],
+            'repeat_rule': repeat_rule
         }
         self.data['todos'][date_str].append(todo_item)
         self.save_data()
@@ -284,3 +285,171 @@ class ConfigManager:
             return (deadline - now).total_seconds()
         except (ValueError, TypeError):
             return None
+    
+    def set_repeat_rule(self, date_str, todo_id, repeat_rule):
+        """
+        为待办事项设置重复规则
+        :param repeat_rule: 重复规则字典，包含：
+            - 'type': 重复类型 ('daily', 'weekly', 'monthly', 'yearly', 'weekdays', 'weekends')
+            - 'interval': 重复间隔（如每2天、每3周等）
+            - 'weekdays': 每周重复的日期列表（0-6，0=周一，6=周日），适用于weekly类型
+            - 'end_date': 重复结束日期（ISO格式字符串），None表示永久重复
+            - 'last_generated': 最后一次生成待办的日期（ISO格式字符串）
+        """
+        if 'todos' in self.data and date_str in self.data['todos']:
+            for todo in self.data['todos'][date_str]:
+                if todo['id'] == todo_id:
+                    if repeat_rule is None:
+                        todo.pop('repeat_rule', None)
+                    else:
+                        todo['repeat_rule'] = repeat_rule
+                    self.save_data()
+                    return True
+        return False
+    
+    def get_repeat_rule(self, todo):
+        """获取待办事项的重复规则"""
+        return todo.get('repeat_rule')
+    
+    def calculate_next_repeat_date(self, current_date_str, repeat_rule):
+        """
+        计算下一个重复日期
+        :param current_date_str: 当前日期（ISO格式字符串）
+        :param repeat_rule: 重复规则字典
+        :return: 下一个重复日期（ISO格式字符串），如果已过期返回None
+        """
+        try:
+            current_date = datetime.strptime(current_date_str, '%Y-%m-%d').date()
+            repeat_type = repeat_rule.get('type', 'daily')
+            interval = repeat_rule.get('interval', 1)
+            end_date_str = repeat_rule.get('end_date')
+            
+            if end_date_str:
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                if current_date > end_date:
+                    return None
+            
+            next_date = None
+            
+            if repeat_type == 'daily':
+                next_date = current_date + timedelta(days=interval)
+            elif repeat_type == 'weekly':
+                weekdays = repeat_rule.get('weekdays', [])
+                if weekdays:
+                    today_weekday = current_date.weekday()
+                    sorted_weekdays = sorted(weekdays)
+                    
+                    for wd in sorted_weekdays:
+                        if wd > today_weekday:
+                            days_to_add = wd - today_weekday
+                            next_date = current_date + timedelta(days=days_to_add)
+                            break
+                    
+                    if next_date is None:
+                        days_to_next_week = 7 - today_weekday + sorted_weekdays[0]
+                        next_date = current_date + timedelta(days=days_to_next_week)
+                    
+                    if interval > 1:
+                        weeks_to_add = (interval - 1) * 7
+                        next_date = next_date + timedelta(days=weeks_to_add)
+                else:
+                    next_date = current_date + timedelta(weeks=interval)
+            elif repeat_type == 'weekdays':
+                next_date = current_date + timedelta(days=1)
+                while next_date.weekday() >= 5:
+                    next_date = next_date + timedelta(days=1)
+            elif repeat_type == 'weekends':
+                next_date = current_date + timedelta(days=1)
+                while next_date.weekday() < 5:
+                    next_date = next_date + timedelta(days=1)
+            elif repeat_type == 'monthly':
+                year = current_date.year
+                month = current_date.month + interval
+                day = current_date.day
+                
+                while month > 12:
+                    month -= 12
+                    year += 1
+                
+                import calendar
+                _, max_day = calendar.monthrange(year, month)
+                day = min(day, max_day)
+                
+                next_date = datetime(year, month, day).date()
+            elif repeat_type == 'yearly':
+                year = current_date.year + interval
+                month = current_date.month
+                day = current_date.day
+                
+                import calendar
+                _, max_day = calendar.monthrange(year, month)
+                day = min(day, max_day)
+                
+                next_date = datetime(year, month, day).date()
+            
+            if next_date and end_date_str:
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                if next_date > end_date:
+                    return None
+            
+            if next_date:
+                return next_date.strftime('%Y-%m-%d')
+            return None
+            
+        except (ValueError, TypeError):
+            return None
+    
+    def generate_repeat_todos(self):
+        """
+        检查所有设置了重复规则的待办事项，生成新的重复待办
+        这个方法应该在应用启动时和每天零点调用
+        """
+        today = datetime.now().strftime('%Y-%m-%d')
+        generated_count = 0
+        
+        todos_dict = self.data.get('todos', {}).copy()
+        
+        for date_str, todos in todos_dict.items():
+            for todo in todos:
+                repeat_rule = todo.get('repeat_rule')
+                if not repeat_rule:
+                    continue
+                
+                last_generated = repeat_rule.get('last_generated')
+                if last_generated and last_generated >= today:
+                    continue
+                
+                next_date = self.calculate_next_repeat_date(date_str, repeat_rule)
+                while next_date and next_date <= today:
+                    existing_todos = self.get_todos(next_date)
+                    todo_exists = any(
+                        t.get('text') == todo['text'] and 
+                        t.get('repeat_rule') and 
+                        t['repeat_rule'].get('type') == repeat_rule.get('type')
+                        for t in existing_todos
+                    )
+                    
+                    if not todo_exists:
+                        new_todo = {
+                            'text': todo['text'],
+                            'completed': False,
+                            'created_at': datetime.now().isoformat(),
+                            'deadline': todo.get('deadline'),
+                            'tag_ids': todo.get('tag_ids', []),
+                            'repeat_rule': repeat_rule.copy()
+                        }
+                        self.add_todo(next_date, new_todo['text'], 
+                                     new_todo['deadline'], 
+                                     new_todo['tag_ids'],
+                                     new_todo['repeat_rule'])
+                        generated_count += 1
+                    
+                    for date in self.data.get('todos', {}):
+                        for t in self.data['todos'][date]:
+                            if t.get('repeat_rule') and t['repeat_rule'] == repeat_rule:
+                                t['repeat_rule']['last_generated'] = next_date
+                    
+                    next_date = self.calculate_next_repeat_date(next_date, repeat_rule)
+        
+        self.save_data()
+        return generated_count
