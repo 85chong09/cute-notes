@@ -203,6 +203,7 @@ class TagManagerDialog(QDialog):
         self.config = config
         self.setWindowTitle('🏷️ 标签管理')
         self.setFixedSize(400, 500)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowContextHelpButtonHint & ~Qt.WindowMinMaxButtonsHint)
         self.setStyleSheet('''
             QDialog {
                 background-color: rgba(255, 248, 240, 0.98);
@@ -277,6 +278,18 @@ class TagManagerDialog(QDialog):
         
         btn_layout = QHBoxLayout()
         
+        self.help_btn = QPushButton('❓ 帮助')
+        self.help_btn.setStyleSheet('''
+            QPushButton {
+                background-color: rgba(150, 150, 200, 0.9);
+            }
+            QPushButton:hover {
+                background-color: rgba(130, 130, 180, 0.9);
+            }
+        ''')
+        self.help_btn.clicked.connect(self.show_help)
+        btn_layout.addWidget(self.help_btn)
+        
         self.edit_btn = QPushButton('✏️ 修改')
         self.edit_btn.setStyleSheet('''
             QPushButton {
@@ -320,7 +333,7 @@ class TagManagerDialog(QDialog):
         
         self.refresh_tag_list()
     
-    def helpEvent(self, event):
+    def show_help(self):
         help_text = '''
 📝 标签管理帮助：
 
@@ -332,6 +345,9 @@ class TagManagerDialog(QDialog):
 标签可以帮助您更好地分类和管理待办事项！
         '''
         QMessageBox.information(self, '标签管理帮助', help_text.strip())
+    
+    def helpEvent(self, event):
+        self.show_help()
         return True
     
     def refresh_tag_list(self):
