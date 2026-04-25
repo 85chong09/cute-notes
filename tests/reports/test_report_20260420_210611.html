@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试报告</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+            padding: 10px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 1.8em;
+            margin-bottom: 5px;
+        }
+        .header .subtitle {
+            color: #a0a0a0;
+            font-size: 0.9em;
+        }
+        .summary-section {
+            padding: 20px;
+            background: #fafbfc;
+        }
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 6px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid #e8e8e8;
+        }
+        .card .value {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .card .label {
+            color: #666;
+            font-size: 0.85em;
+        }
+        .card.total .value { color: #333; }
+        .card.passed .value { color: #52c41a; }
+        .card.failed .value { color: #ff4d4f; }
+        .card.error .value { color: #faad14; }
+        .card.duration .value { color: #1890ff; }
+        .card.rate .value { color: #722ed1; }
+        
+        .charts-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 6px;
+            padding: 15px;
+            border: 1px solid #e8e8e8;
+        }
+        .chart-container h3 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 1em;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 8px;
+        }
+        .chart-wrapper {
+            position: relative;
+            height: 180px;
+            width: 100%;
+        }
+        
+        .module-stats-section {
+            margin-bottom: 20px;
+        }
+        .module-stats-section h3 {
+            margin-bottom: 12px;
+            color: #333;
+            font-size: 1em;
+        }
+        .module-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #e8e8e8;
+        }
+        .module-table th, .module-table td {
+            padding: 10px 8px;
+            text-align: center;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.85em;
+        }
+        .module-table th {
+            background: #fafafa;
+            color: #333;
+            font-weight: 600;
+        }
+        .module-table tr:last-child td {
+            border-bottom: none;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .progress-bar .fill {
+            height: 100%;
+            background: #52c41a;
+        }
+        
+        .test-cases-section {
+            margin-top: 20px;
+        }
+        .test-cases-section h3 {
+            margin-bottom: 12px;
+            color: #333;
+            font-size: 1em;
+        }
+        .table-container {
+            overflow-x: auto;
+            border-radius: 6px;
+            border: 1px solid #e8e8e8;
+        }
+        .test-cases-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            table-layout: fixed;
+        }
+        .test-cases-table th, .test-cases-table td {
+            padding: 10px 8px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.85em;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        .test-cases-table th {
+            background: #fafafa;
+            color: #333;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .test-cases-table tr:last-child td {
+            border-bottom: none;
+        }
+        .test-cases-table th:nth-child(1) { width: 50px; }
+        .test-cases-table th:nth-child(2) { width: 120px; }
+        .test-cases-table th:nth-child(3) { width: 180px; }
+        .test-cases-table th:nth-child(4) { width: 150px; }
+        .test-cases-table th:nth-child(5) { width: 100px; }
+        .test-cases-table th:nth-child(6) { width: 100px; }
+        .test-cases-table th:nth-child(7) { width: 70px; }
+        .test-cases-table th:nth-child(8) { width: 70px; }
+        
+        .status-badge {
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .status-pass { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+        .status-fail { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
+        .status-error { background: #fffbe6; color: #faad14; border: 1px solid #ffe58f; }
+        .status-skipped { background: #fafafa; color: #8c8c8c; border: 1px solid #d9d9d9; }
+        
+        .error-details {
+            background: #fff2f0;
+            border-left: 3px solid #ff4d4f;
+            padding: 8px 12px;
+            margin-top: 5px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.4;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .email-section {
+            background: linear-gradient(135deg, #ff7875 0%, #ff4d4f 100%);
+            padding: 20px;
+            text-align: center;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+        .email-section h3 {
+            color: white;
+            margin-bottom: 12px;
+            font-size: 1.1em;
+        }
+        .email-form {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .email-form input {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9em;
+            min-width: 200px;
+            outline: none;
+        }
+        .email-form button {
+            padding: 8px 20px;
+            background: white;
+            color: #ff4d4f;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .email-form button:hover {
+            background: #fafafa;
+        }
+        .email-status {
+            margin-top: 10px;
+            color: white;
+            font-size: 0.9em;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 15px;
+            color: #8c8c8c;
+            font-size: 0.85em;
+        }
+        
+        @media (max-width: 768px) {
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+            .summary-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 自动化测试报告</h1>
+            <div class="subtitle">生成时间: 2026-04-20 21:06:11</div>
+        </div>
+        
+        <div class="summary-section">
+            <div class="summary-cards">
+                <div class="card total">
+                    <div class="value">33</div>
+                    <div class="label">总测试用例数</div>
+                </div>
+                <div class="card passed">
+                    <div class="value">33</div>
+                    <div class="label">通过用例数</div>
+                </div>
+                <div class="card failed">
+                    <div class="value">0</div>
+                    <div class="label">失败用例数</div>
+                </div>
+                <div class="card error">
+                    <div class="value">0</div>
+                    <div class="label">错误用例数</div>
+                </div>
+                <div class="card rate">
+                    <div class="value">100.0%</div>
+                    <div class="label">通过率</div>
+                </div>
+                <div class="card duration">
+                    <div class="value">0.29s</div>
+                    <div class="label">执行时长</div>
+                </div>
+            </div>
+            
+            <div class="charts-section">
+                <div class="chart-container">
+                    <h3>📈 测试结果分布</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h3>📊 模块测试统计</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="moduleChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="module-stats-section">
+                <h3>📁 模块测试详情</h3>
+                <table class="module-table">
+                    <thead>
+                        <tr>
+                            <th>模块名称</th>
+                            <th>总用例数</th>
+                            <th>通过</th>
+                            <th>失败</th>
+                            <th>错误</th>
+                            <th>通过率</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                <tr>
+                    <td><strong>test_config_manager</strong></td>
+                    <td>33</td>
+                    <td style="color: #52c41a; font-weight: 600;">33</td>
+                    <td style="color: #ff4d4f; font-weight: 600;">0</td>
+                    <td style="color: #faad14; font-weight: 600;">0</td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="fill" style="width: 100.0%;"></div>
+                        </div>
+                        <span style="margin-top: 3px; display: block; font-weight: 600; font-size: 0.85em;">100.0%</span>
+                    </td>
+                </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="test-cases-section">
+                <h3>📋 测试用例详情</h3>
+                <div class="table-container">
+                    <table class="test-cases-table">
+                        <thead>
+                            <tr>
+                                <th>序号</th>
+                                <th>模块</th>
+                                <th>用例名称</th>
+                                <th>测试内容</th>
+                                <th>预期结果</th>
+                                <th>实际结果</th>
+                                <th>状态</th>
+                                <th>耗时</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                <tr>
+                    <td><strong>1</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_add_todo_empty_text</strong></td>
+                    <td>测试添加空文本的待办事项</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.066s</td>
+                </tr>
+                <tr>
+                    <td><strong>2</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_add_todo_existing_date</strong></td>
+                    <td>测试在已有待办事项的日期添加新待办</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.003s</td>
+                </tr>
+                <tr>
+                    <td><strong>3</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_add_todo_new_date</strong></td>
+                    <td>测试在新日期添加待办事项</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.0043s</td>
+                </tr>
+                <tr>
+                    <td><strong>4</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_check_password_correct</strong></td>
+                    <td>测试检查正确的密码</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.002s</td>
+                </tr>
+                <tr>
+                    <td><strong>5</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_check_password_incorrect</strong></td>
+                    <td>测试检查错误的密码</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.003s</td>
+                </tr>
+                <tr>
+                    <td><strong>6</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_delete_todo_not_found</strong></td>
+                    <td>测试删除不存在的待办事项</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.001s</td>
+                </tr>
+                <tr>
+                    <td><strong>7</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_delete_todo_removes_empty_date</strong></td>
+                    <td>测试删除最后一个待办事项后日期键被移除</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.0175s</td>
+                </tr>
+                <tr>
+                    <td><strong>8</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_delete_todo_success</strong></td>
+                    <td>测试成功删除待办事项</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.0025s</td>
+                </tr>
+                <tr>
+                    <td><strong>9</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_get_todos_empty_date</strong></td>
+                    <td>测试获取不存在日期的待办事项</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.003s</td>
+                </tr>
+                <tr>
+                    <td><strong>10</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_get_todos_empty_string_date</strong></td>
+                    <td>测试使用空字符串作为日期</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.002s</td>
+                </tr>
+                <tr>
+                    <td><strong>11</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_get_todos_existing_date</strong></td>
+                    <td>测试获取存在日期的待办事项</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.003s</td>
+                </tr>
+                <tr>
+                    <td><strong>12</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_has_password_false</strong></td>
+                    <td>测试没有密码的情况</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.002s</td>
+                </tr>
+                <tr>
+                    <td><strong>13</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_has_password_true</strong></td>
+                    <td>测试有密码的情况</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.004s</td>
+                </tr>
+                <tr>
+                    <td><strong>14</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_initialization_default_config</strong></td>
+                    <td>测试初始化时默认配置是否正确设置</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.003s</td>
+                </tr>
+                <tr>
+                    <td><strong>15</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_load_config_existing_file</strong></td>
+                    <td>测试从现有文件加载配置</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.0175s</td>
+                </tr>
+                <tr>
+                    <td><strong>16</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_load_config_invalid_json</strong></td>
+                    <td>测试加载无效JSON文件时是否使用默认配置</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.016s</td>
+                </tr>
+                <tr>
+                    <td><strong>17</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_load_data_existing_file</strong></td>
+                    <td>测试从现有文件加载数据</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.0195s</td>
+                </tr>
+                <tr>
+                    <td><strong>18</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_save_config</strong></td>
+                    <td>测试保存配置到文件</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.014s</td>
+                </tr>
+                <tr>
+                    <td><strong>19</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_save_data</strong></td>
+                    <td>测试保存数据到文件</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.013s</td>
+                </tr>
+                <tr>
+                    <td><strong>20</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_search_todos_case_insensitive</strong></td>
+                    <td>测试搜索不区分大小写</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.003s</td>
+                </tr>
+                <tr>
+                    <td><strong>21</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_search_todos_empty_keyword</strong></td>
+                    <td>测试使用空关键词搜索</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.003s</td>
+                </tr>
+                <tr>
+                    <td><strong>22</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_search_todos_no_results</strong></td>
+                    <td>测试搜索没有结果的情况</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.005s</td>
+                </tr>
+                <tr>
+                    <td><strong>23</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_search_todos_with_results</strong></td>
+                    <td>测试搜索有结果的情况</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.004s</td>
+                </tr>
+                <tr>
+                    <td><strong>24</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_set_password</strong></td>
+                    <td>测试设置密码</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.002s</td>
+                </tr>
+                <tr>
+                    <td><strong>25</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_set_theme_dark</strong></td>
+                    <td>测试设置暗黑主题</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.003s</td>
+                </tr>
+                <tr>
+                    <td><strong>26</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_set_theme_light</strong></td>
+                    <td>测试设置明亮主题</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.0025s</td>
+                </tr>
+                <tr>
+                    <td><strong>27</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_set_transparent_false</strong></td>
+                    <td>测试设置为不透明</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.005s</td>
+                </tr>
+                <tr>
+                    <td><strong>28</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_set_transparent_true</strong></td>
+                    <td>测试设置为透明</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.0025s</td>
+                </tr>
+                <tr>
+                    <td><strong>29</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_set_window_geometry</strong></td>
+                    <td>测试设置窗口几何参数</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.003s</td>
+                </tr>
+                <tr>
+                    <td><strong>30</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_update_todo_no_kwargs</strong></td>
+                    <td>测试不传递任何更新参数</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.003s</td>
+                </tr>
+                <tr>
+                    <td><strong>31</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_update_todo_not_found</strong></td>
+                    <td>测试更新不存在的待办事项</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.002s</td>
+                </tr>
+                <tr>
+                    <td><strong>32</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_update_todo_success</strong></td>
+                    <td>测试成功更新待办事项</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.009s</td>
+                </tr>
+                <tr>
+                    <td><strong>33</strong></td>
+                    <td>test_config_manager</td>
+                    <td><strong>TestConfigManager.test_update_todo_wrong_date</strong></td>
+                    <td>测试在错误的日期更新待办事项</td>
+                    <td>测试用例执行成功</td>
+                    <td>测试通过</td>
+                    <td><span class="status-badge status-pass">通过</span></td>
+                    <td>0.0025s</td>
+                </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="email-section">
+                <h3>📧 一键发送测试报告</h3>
+                <div class="email-form">
+                    <input type="email" id="emailInput" placeholder="请输入收件人邮箱地址" />
+                    <button onclick="sendEmail()">发送报告</button>
+                </div>
+                <div id="emailStatus" class="email-status"></div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>自动化测试报告 | 生成时间: 2026-04-20 21:06:11</p>
+        </div>
+    </div>
+    
+    <script>
+        // 状态图表
+        const statusCtx = document.getElementById('statusChart').getContext('2d');
+        const statusData = {"passed": 33, "failed": 0, "error": 0, "skipped": 0};
+        const statusChart = new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['通过', '失败', '错误', '跳过'],
+                datasets: [{
+                    data: [statusData.passed, statusData.failed, statusData.error, statusData.skipped],
+                    backgroundColor: ['#52c41a', '#ff4d4f', '#faad14', '#8c8c8c'],
+                    borderWidth: 1,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            padding: 10,
+                            font: {
+                                size: 11
+                            },
+                            boxWidth: 12,
+                            boxHeight: 12
+                        }
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+        
+        // 模块图表
+        const moduleCtx = document.getElementById('moduleChart').getContext('2d');
+        const moduleStats = {"test_config_manager": {"total": 33, "passed": 33, "failed": 0, "error": 0, "pass_rate": 100.0}};
+        const moduleLabels = Object.keys(moduleStats);
+        const modulePassed = moduleLabels.map(m => moduleStats[m].passed);
+        const moduleFailed = moduleLabels.map(m => moduleStats[m].failed);
+        
+        const moduleChart = new Chart(moduleCtx, {
+            type: 'bar',
+            data: {
+                labels: moduleLabels,
+                datasets: [
+                    {
+                        label: '通过',
+                        data: modulePassed,
+                        backgroundColor: '#52c41a',
+                        borderRadius: 3
+                    },
+                    {
+                        label: '失败',
+                        data: moduleFailed,
+                        backgroundColor: '#ff4d4f',
+                        borderRadius: 3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        stacked: true,
+                        ticks: {
+                            font: {
+                                size: 10
+                            }
+                        },
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 5,
+                            font: {
+                                size: 10
+                            }
+                        },
+                        grid: {
+                            color: '#f0f0f0'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            padding: 10,
+                            font: {
+                                size: 11
+                            },
+                            boxWidth: 12,
+                            boxHeight: 12
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 发送邮件功能
+        function sendEmail() {
+            const email = document.getElementById('emailInput').value;
+            const statusDiv = document.getElementById('emailStatus');
+            
+            if (!email) {
+                statusDiv.textContent = '⚠️ 请输入邮箱地址';
+                statusDiv.style.color = '#ffe58f';
+                return;
+            }
+            
+            if (!email.includes('@')) {
+                statusDiv.textContent = '⚠️ 请输入有效的邮箱地址';
+                statusDiv.style.color = '#ffe58f';
+                return;
+            }
+            
+            statusDiv.textContent = '📤 正在发送...';
+            statusDiv.style.color = 'white';
+            
+            setTimeout(() => {
+                statusDiv.textContent = '✅ 邮件发送功能已就绪，请使用Python脚本发送';
+                statusDiv.style.color = '#d9f7be';
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
