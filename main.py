@@ -907,18 +907,21 @@ class RepeatRulePickerDialog(QDialog):
             QRadioButton {
                 color: #5a4a3a;
                 font-size: 13px;
-                padding: 8px 10px;
-                spacing: 10px;
-                min-height: 25px;
+                padding: 5px 8px;
+                spacing: 12px;
+                min-height: 28px;
             }
             QRadioButton::indicator {
                 width: 18px;
                 height: 18px;
+                margin-left: 5px;
             }
             QCheckBox {
                 color: #5a4a3a;
                 font-size: 12px;
-                padding: 5px;
+                padding: 8px 10px;
+                spacing: 8px;
+                min-height: 25px;
             }
             QCheckBox::indicator {
                 width: 18px;
@@ -1006,7 +1009,8 @@ class RepeatRulePickerDialog(QDialog):
         
         self.weekdays_frame = QFrame()
         weekdays_layout = QHBoxLayout(self.weekdays_frame)
-        weekdays_layout.setContentsMargins(0, 0, 0, 0)
+        weekdays_layout.setContentsMargins(5, 10, 5, 10)
+        weekdays_layout.setSpacing(5)
         
         weekday_label = QLabel('选择星期:')
         weekdays_layout.addWidget(weekday_label)
