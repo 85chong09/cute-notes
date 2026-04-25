@@ -1327,7 +1327,11 @@ class TodoItem(QWidget):
                 
                 tag_x += tag_width + 8
         
-        tag_btn_x = self.width() - padding - delete_btn_size - 5 - clock_btn_size - 5 - tag_btn_size
+        delete_btn_x = self.width() - padding - delete_btn_size
+        repeat_btn_x = delete_btn_x - 5 - repeat_btn_size
+        clock_btn_x = repeat_btn_x - 5 - clock_btn_size
+        tag_btn_x = clock_btn_x - 5 - tag_btn_size
+        
         tag_btn_rect = QRect(tag_btn_x, (self.height() - tag_btn_size) // 2, tag_btn_size, tag_btn_size)
         painter.setPen(Qt.NoPen)
         painter.setBrush(QBrush(QColor(255, 215, 0)))
@@ -1337,7 +1341,6 @@ class TodoItem(QWidget):
         painter.setFont(QFont('Microsoft YaHei', 12))
         painter.drawText(tag_btn_rect, Qt.AlignCenter, '🏷️')
         
-        clock_btn_x = self.width() - padding - delete_btn_size - 5 - clock_btn_size
         clock_btn_rect = QRect(clock_btn_x, (self.height() - clock_btn_size) // 2, clock_btn_size, clock_btn_size)
         
         if not is_completed:
@@ -1390,7 +1393,6 @@ class TodoItem(QWidget):
                 painter.drawLine(center_x, center_y, center_x, center_y - hour_length)
                 painter.drawLine(center_x, center_y, center_x + minute_length, center_y)
         
-        repeat_btn_x = self.width() - padding - delete_btn_size - 5 - repeat_btn_size
         repeat_btn_rect = QRect(repeat_btn_x, (self.height() - repeat_btn_size) // 2, repeat_btn_size, repeat_btn_size)
         
         has_repeat = self.todo.get('repeat_rule') is not None
@@ -1461,39 +1463,41 @@ class TodoItem(QWidget):
             repeat_btn_size = 24
             is_completed = self.todo.get('completed', False)
             
+            delete_btn_x = self.width() - padding - delete_btn_size
+            repeat_btn_x = delete_btn_x - 5 - repeat_btn_size
+            clock_btn_x = repeat_btn_x - 5 - clock_btn_size
+            tag_btn_x = clock_btn_x - 5 - tag_btn_size
+            
             circle_rect = QRect(padding, (self.height() - circle_size) // 2, circle_size, circle_size)
             if circle_rect.contains(event.pos()):
                 self.toggle_completed()
                 event.accept()
                 return
-            else:
-                tag_btn_x = self.width() - padding - delete_btn_size - 5 - repeat_btn_size - 5 - clock_btn_size - 5 - tag_btn_size
-                tag_btn_rect = QRect(tag_btn_x, (self.height() - tag_btn_size) // 2, tag_btn_size, tag_btn_size)
-                if tag_btn_rect.contains(event.pos()):
-                    self.show_tag_picker_dialog()
-                    event.accept()
-                    return
-                else:
-                    clock_btn_x = self.width() - padding - delete_btn_size - 5 - repeat_btn_size - 5 - clock_btn_size
-                    clock_btn_rect = QRect(clock_btn_x, (self.height() - clock_btn_size) // 2, clock_btn_size, clock_btn_size)
-                    if clock_btn_rect.contains(event.pos()):
-                        if not is_completed:
-                            self.show_deadline_dialog()
-                        event.accept()
-                        return
-                    else:
-                        repeat_btn_x = self.width() - padding - delete_btn_size - 5 - repeat_btn_size
-                        repeat_btn_rect = QRect(repeat_btn_x, (self.height() - repeat_btn_size) // 2, repeat_btn_size, repeat_btn_size)
-                        if repeat_btn_rect.contains(event.pos()):
-                            self.show_repeat_dialog()
-                            event.accept()
-                            return
-                        else:
-                            delete_btn_rect = QRect(self.width() - padding - delete_btn_size, (self.height() - delete_btn_size) // 2, delete_btn_size, delete_btn_size)
-                            if delete_btn_rect.contains(event.pos()):
-                                self.main_window.delete_todo(self.todo['id'])
-                                event.accept()
-                                return
+            
+            tag_btn_rect = QRect(tag_btn_x, (self.height() - tag_btn_size) // 2, tag_btn_size, tag_btn_size)
+            if tag_btn_rect.contains(event.pos()):
+                self.show_tag_picker_dialog()
+                event.accept()
+                return
+            
+            clock_btn_rect = QRect(clock_btn_x, (self.height() - clock_btn_size) // 2, clock_btn_size, clock_btn_size)
+            if clock_btn_rect.contains(event.pos()):
+                if not is_completed:
+                    self.show_deadline_dialog()
+                event.accept()
+                return
+            
+            repeat_btn_rect = QRect(repeat_btn_x, (self.height() - repeat_btn_size) // 2, repeat_btn_size, repeat_btn_size)
+            if repeat_btn_rect.contains(event.pos()):
+                self.show_repeat_dialog()
+                event.accept()
+                return
+            
+            delete_btn_rect = QRect(delete_btn_x, (self.height() - delete_btn_size) // 2, delete_btn_size, delete_btn_size)
+            if delete_btn_rect.contains(event.pos()):
+                self.main_window.delete_todo(self.todo['id'])
+                event.accept()
+                return
         
         super().mousePressEvent(event)
 
