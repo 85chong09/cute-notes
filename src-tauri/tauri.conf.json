@@ -1,0 +1,72 @@
+{
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "devPath": "../src",
+    "distDir": "../src"
+  },
+  "package": {
+    "productName": "可爱便签",
+    "version": "1.0.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "shell": {
+        "all": false,
+        "open": true
+      },
+      "dialog": {
+        "all": true,
+        "ask": true,
+        "confirm": true,
+        "message": true,
+        "open": true,
+        "save": true
+      },
+      "window": {
+        "all": false,
+        "close": true,
+        "hide": true,
+        "minimize": true,
+        "setAlwaysOnTop": true,
+        "setFocus": true,
+        "setSize": true,
+        "setPosition": true,
+        "show": true,
+        "startDragging": true
+      }
+    },
+    "bundle": {
+      "active": true,
+      "category": "Productivity",
+      "identifier": "com.cute-notes.app",
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ],
+      "longDescription": "可爱便签 - 一个功能丰富的待办事项应用，支持标签、重复任务、密码保护等功能。",
+      "shortDescription": "可爱便签",
+      "targets": "all"
+    },
+    "security": {
+      "csp": null
+    },
+    "windows": [
+      {
+        "decorations": false,
+        "resizable": true,
+        "width": 480,
+        "height": 550,
+        "minWidth": 480,
+        "minHeight": 520,
+        "alwaysOnTop": true,
+        "center": true,
+        "title": "可爱便签",
+        "transparent": true
+      }
+    ]
+  }
+}
