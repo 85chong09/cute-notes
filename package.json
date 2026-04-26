@@ -1,0 +1,13 @@
+{
+  "name": "cute-notes",
+  "version": "1.0.0",
+  "description": "可爱便签 - 一个功能丰富的待办事项应用",
+  "type": "module",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}
