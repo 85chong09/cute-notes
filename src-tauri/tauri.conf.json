@@ -4,7 +4,7 @@
   "productName": "可爱便签",
   "version": "1.0.0",
   "build": {
-    "beforeDevCommand": "cd ../ && python server.py",
+    "beforeDevCommand": "python D:/tips/server.py",
     "beforeBuildCommand": "",
     "frontendDist": "../src",
     "devUrl": "http://localhost:1420"
@@ -41,18 +41,5 @@
     "longDescription": "可爱便签 - 一个功能丰富的待办事项应用，支持标签、重复任务、密码保护等功能。",
     "shortDescription": "可爱便签",
     "targets": "all"
-  },
-  "plugins": {
-    "dialog": {
-      "all": true,
-      "ask": true,
-      "confirm": true,
-      "message": true,
-      "open": true,
-      "save": true
-    },
-    "shell": {
-      "open": true
-    }
   }
 }

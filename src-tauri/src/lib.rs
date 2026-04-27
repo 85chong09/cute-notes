@@ -308,21 +308,26 @@ fn update_todo(
 fn delete_todo(date_str: String, todo_id: String) -> Result<bool, String> {
     let mut data = load_data();
     
+    let mut should_remove = false;
+    let mut changed = false;
+    
     if let Some(todos) = data.todos.get_mut(&date_str) {
         let original_len = todos.len();
         todos.retain(|t| t.id != todo_id);
-        
-        if todos.is_empty() {
-            data.todos.remove(&date_str);
-        }
-        
-        if todos.len() != original_len {
-            save_data(&data)?;
-            return Ok(true);
-        }
+        changed = todos.len() != original_len;
+        should_remove = todos.is_empty();
     }
     
-    Ok(false)
+    if should_remove {
+        data.todos.remove(&date_str);
+    }
+    
+    if changed {
+        save_data(&data)?;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
 }
 
 #[tauri::command]
@@ -432,7 +437,12 @@ fn is_task_urgent(todo: &Todo, hours: i64) -> bool {
     }
     
     let deadline = match &todo.deadline {
-        Some(d) => DateTime::parse_from_rfc3339(d).ok()?,
+        Some(d) => {
+            match DateTime::parse_from_rfc3339(d) {
+                Ok(dt) => dt,
+                Err(_) => return false,
+            }
+        }
         None => return false,
     };
     
