@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>可爱便签</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 展开模式 -->
+        <div id="expanded-view" class="view">
+            <!-- 标题栏 -->
+            <div id="title-bar" class="title-bar">
+                <span class="title">📒 可爱便签</span>
+                <div class="title-bar-buttons">
+                    <button id="lock-btn" class="icon-btn" title="锁定">🔓</button>
+                    <button id="settings-btn" class="icon-btn" title="设置">⚙️</button>
+                    <button id="collapse-btn" class="icon-btn" title="收起">−</button>
+                    <button id="close-btn" class="icon-btn close-btn" title="关闭">×</button>
+                </div>
+            </div>
+
+            <!-- 搜索栏 -->
+            <div class="search-bar">
+                <input type="text" id="search-input" placeholder="🔍 搜索待办事项..." class="search-input">
+                <button id="tag-filter-btn" class="tag-filter-btn">🏷️ 筛选</button>
+            </div>
+
+            <!-- 模式切换 -->
+            <div class="mode-bar">
+                <button id="today-btn" class="mode-btn active">📅 今日待办</button>
+                <button id="calendar-btn" class="mode-btn">🗓️ 日历模式</button>
+                <button id="tag-manager-btn" class="mode-btn">🏷️ 标签管理</button>
+                <span id="date-display" class="date-display"></span>
+            </div>
+
+            <!-- 内容区域 -->
+            <div id="content-area" class="content-area">
+                <!-- 待办列表 -->
+                <div id="todo-list-view" class="view-content">
+                    <div id="todo-list" class="todo-list"></div>
+                </div>
+
+                <!-- 日历视图 -->
+                <div id="calendar-view" class="view-content hidden">
+                    <div id="calendar" class="calendar"></div>
+                </div>
+            </div>
+
+            <!-- 添加待办 -->
+            <div class="add-bar">
+                <input type="text" id="new-todo-input" placeholder="✏️ 添加新的待办事项..." class="add-input">
+                <button id="add-btn" class="add-btn">➕</button>
+            </div>
+        </div>
+
+        <!-- 收起模式 -->
+        <div id="collapsed-view" class="view hidden">
+            <div id="collapsed-icon" class="collapsed-icon">😊</div>
+            <div id="urgent-badge" class="urgent-badge hidden">0</div>
+        </div>
+
+        <!-- 锁定模式 -->
+        <div id="locked-view" class="view hidden">
+            <div id="locked-icon" class="locked-icon">
+                <div class="lock-shape"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框 -->
+    <div id="modal-overlay" class="modal-overlay hidden">
+        <div id="modal-content" class="modal-content"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
